@@ -1,7 +1,7 @@
 <?php
 session_start();
 require("database.php");
-date_default_timezone_set('Asia/Kuala_Lumpur'); // Or 'Europe/London'
+date_default_timezone_set('Asia/Kuala_Lumpur'); //
 
 // If they haven't passed the first login, send them back
 if (!isset($_SESSION['temp_user_id'])) {
@@ -40,7 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         exit();
     } else {
-        $error = "Invalid or expired code. Please check phpMyAdmin.";
+        $error = "Invalid or expired code. Please try again.";
     }
 }
 ?>
@@ -48,28 +48,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Verify Login | 2FA</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .otp-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 350px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 20px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 20px; text-align: center; letter-spacing: 4px; }
-        button { width: 100%; padding: 12px; background: #333; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .error { color: red; font-size: 14px; margin-top: 10px; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Factor Authentication | Internship System</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
 </head>
-<body>
-    <div class="otp-card">
-        <h2>Security Check</h2>
-        <p>Enter the 6-digit code from your database.</p>
-        
-        <form method="POST">
-            <input type="text" name="otp" placeholder="000000" maxlength="6" required autofocus autocomplete="off">
-            <button type="submit">Complete Login</button>
-        </form>
 
-        <?php if($error) echo "<p class='error'>$error</p>"; ?>
-        <br>
-        <a href="index.php" style="font-size: 12px; color: #888;">Back to Login</a>
+<body class="auth-body">
+    <div class="otp-card">
+        <div class="shield-icon">🛡️</div>
+        <h2>Security Check</h2>
+        <p>Please enter the 6-digit authentication code sent to your database to complete your login.</p>
+        
+       <form method="POST">
+    <input type="text" name="otp" class="otp-input" placeholder="••••••" maxlength="6" required autofocus autocomplete="off">
+    <button type="submit">Complete Secure Login</button>
+</form>
+
+        <?php if($error) echo "<div class='error'>$error</div>"; ?>
+        
+        <a href="index.php" class="back-link">← Back to Login</a>
     </div>
 </body>
 </html>

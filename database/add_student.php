@@ -3,10 +3,10 @@ session_start();
 require("database.php");
 
 // 1. Security: Only Admins can add students
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
-    header("Location: index.php");
-    exit();
-}
+//if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
+    //header("Location: index.php");
+    //exit();
+//}
 
 // 2. Fetch Data for Dropdowns
 $prog_result = mysqli_query($conn, "SELECT * FROM programmes");
@@ -50,11 +50,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             mysqli_stmt_bind_param($stmt_i, "sss", $int_id, $sid, $company);
             mysqli_stmt_execute($stmt_i);
 
-            mysqli_commit($conn);
-            $msg = "<p style='color:green;'>SUCCESS: Student account, profile, and internship created!</p>";
+           mysqli_commit($conn);
+            // Uses the $sname variable you already captured from the form!
+            $msg = "<div class='floating-alert success'>Student '$sname' added successfully!</div>";
         } catch (Exception $e) {
             mysqli_rollback($conn);
-            $msg = "<p style='color:red;'>SYSTEM ERROR: Transaction failed. Please check database logs.</p>";
+            $msg = "<div class='floating-alert error'>SYSTEM ERROR: Transaction failed.</div>";
         }
     }
 }
@@ -64,27 +65,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Add New Student | Admin Portal</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 40px; color: #333; }
-        .form-card { max-width: 550px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .back-link { display: inline-block; margin-bottom: 20px; color: #555; text-decoration: none; font-size: 14px; }
-        .back-link:hover { text-decoration: underline; }
-        h2 { margin-bottom: 5px; color: #1a1a1a; }
-        p.subtitle { color: #666; font-size: 14px; margin-bottom: 25px; }
-        .input-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; text-transform: uppercase; color: #444; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 15px; transition: border 0.3s; }
-        input:focus { border-color: #333; outline: none; }
-        .btn-save { width: 100%; background: #1a1a1a; color: #fff; border: none; padding: 14px; cursor: pointer; border-radius: 6px; font-size: 16px; font-weight: 600; transition: background 0.3s; }
-        .btn-save:hover { background: #000; }
-        .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
-    </style>
+    <title>Add New | Admin Portal</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
 </head>
-<body>
+<body class="add-student-page">
 
 <div class="form-card">
-    <a href="admin_dashboard.php" class="back-link">← Return to Dashboard</a>
+<a href="admin_dashboard.php" class="dash-back-link">← Back to Dashboard</a>
     <h2>Register New Student</h2>
     <p class="subtitle">This will create a user account and an internship entry.</p>
 

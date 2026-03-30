@@ -2,19 +2,26 @@
 session_start();
 require("database.php");
 
-// 1. Security Check: Only Admins allowed [cite: 13]
+// 1. Security Check: Only Admins allowed
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
     header("Location: index.php");
     exit();
 }
 
-// 2. Search Logic 
+// 2. Search Logic (This is what accidentally got deleted!)
 $search = "";
 if (isset($_GET['search'])) {
     $search = mysqli_real_escape_string($conn, $_GET['search']);
 }
 
-// 3. Fetching Students with Program and Supervisor Info [cite: 14, 20, 25]
+// 3. Listen for the delete message and grab the name
+$message = "";
+if (isset($_GET['msg']) && $_GET['msg'] == 'deleted') {
+    $deleted_name = isset($_GET['name']) ? htmlspecialchars($_GET['name']) : 'Student';
+    $message = "<div class='floating-alert success'>Student '$deleted_name' deleted successfully.</div>";
+}
+
+// 4. Fetching Students with Program and Supervisor Info
 $query = "SELECT s.student_id, s.student_name, p.programme_name, u.full_name AS supervisor_name, i.company_name
           FROM students s
           LEFT JOIN programmes p ON s.programme_id = p.programme_id
@@ -31,25 +38,20 @@ $result = mysqli_query($conn, $query);
     <meta charset="UTF-8">
     <title>Admin Dashboard | Internship Management</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Minimalist internal styles to guide your teammate */
-        .dashboard-container { padding: 40px; font-family: 'Segoe UI', sans-serif; }
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
-        .stat-card { background: #fff; padding: 20px; border: 1px solid #eee; border-radius: 4px; text-align: center; }
-        .search-bar { margin-bottom: 20px; display: flex; gap: 10px; }
-        .search-input { padding: 10px; border: 1px solid #ddd; width: 300px; border-radius: 4px; }
-        table { width: 100%; border-collapse: collapse; background: #fff; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #f8f9fa; text-transform: uppercase; font-size: 12px; }
-        .btn-add { background: #333; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-size: 14px; }
-    </style>
 </head>
+
 <body>
+
+<body>
+
+<?php if ($message != "") echo $message; ?>
+
+<div class="dashboard-container">
 
 <div class="dashboard-container">
     <header style="display: flex; justify-content: space-between; align-items: center;">
         <h1>System Administration</h1>
-        <a href="logout.php" style="color: #e74c3c;">Logout</a>
+        <a href="logout.php" style="color: -webkit-link; font-weight: 500; text-decoration: underline;">Logout</a>
     </header>
     
     <p>Welcome, <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong></p>
@@ -66,13 +68,17 @@ $result = mysqli_query($conn, $query);
         </div>
     </div>
 
-    <div class="search-bar">
-        <form method="GET" action="admin_dashboard.php">
+   <div class="search-bar">
+        <form method="GET" action="admin_dashboard.php" class="search-container">
+            
             <input type="text" name="search" class="search-input" placeholder="Search by ID or Name..." value="<?php echo htmlspecialchars($search); ?>">
-            <button type="submit" style="padding: 10px;">Search</button>
+            
+            <button type="submit" style="padding: 10px; cursor: pointer;">Search</button>
+            
             <?php if($search != ""): ?>
-                <a href="admin_dashboard.php" style="font-size: 12px; align-self: center;">Clear Search</a>
+                <a href="admin_dashboard.php" style="font-size: 12px; color: #64748b; text-decoration: none; align-self: center; margin-left: 10px;">Clear Search</a>
             <?php endif; ?>
+            
         </form>
     </div>
 
@@ -97,8 +103,10 @@ $result = mysqli_query($conn, $query);
                 <td><?php echo $row['company_name'] ?? 'No Internship'; ?></td>
                 <td><?php echo $row['supervisor_name'] ?? '<em>Unassigned</em>'; ?></td>
                 <td>
-                    <a href="edit_student.php?id=<?php echo $row['student_id']; ?>">Edit</a> | 
-                    <a href="delete_student.php?id=<?php echo $row['student_id']; ?>" onclick="return confirm('Delete this record?')">Delete</a>
+                    <div class="action-buttons">
+                        <a href="edit_student.php?id=<?php echo $row['student_id']; ?>" class="btn-edit">Edit</a>
+                        <a href="delete_student.php?id=<?php echo $row['student_id']; ?>" class="btn-delete" onclick="return confirm('Delete this record?')">Delete</a>
+                    </div>
                 </td>
             </tr>
             <?php endwhile; ?>

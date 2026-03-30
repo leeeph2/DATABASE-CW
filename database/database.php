@@ -9,13 +9,15 @@ $db_server = "localhost";
 $db_user   = "root";
 $db_pass   = "root"; // MAMP default is 'root'. If using XAMPP, change to ""
 $db_name   = "internship_system";
+$db_port   = 8889;   // Added the custom MAMP port
 
 // 3. Initialize connection variable
 $conn = null;
 
 // 4. Attempt to connect using a Try-Catch block
 try {
-    $conn = mysqli_connect($db_server, $db_user, $db_pass, $db_name);
+    // Added $db_port as the 5th parameter
+    $conn = mysqli_connect($db_server, $db_user, $db_pass, $db_name, $db_port);
     
     // Check if the connection actually worked
     if (!$conn) {
