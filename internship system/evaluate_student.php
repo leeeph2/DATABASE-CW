@@ -13,20 +13,25 @@ $lecturer_id = $_SESSION['user_id'];
 // 2. Fetch Student Details
 if (isset($_GET['id'])) {
     $student_id = mysqli_real_escape_string($conn, $_GET['id']);
-    
+
     $query = "SELECT s.student_name, s.student_id, i.internship_id, i.company_name 
-          FROM students s 
-          LEFT JOIN internships i ON s.student_id = i.student_id 
-          WHERE s.student_id = '$student_id' AND s.supervisor_id = '$lecturer_id'";
+              FROM students s 
+              LEFT JOIN internships i ON s.student_id = i.student_id 
+              WHERE s.student_id = '$student_id' AND s.supervisor_id = '$lecturer_id'";
     $result = mysqli_query($conn, $query);
-    
+
     if (mysqli_num_rows($result) == 0) {
-        header("Location: evaluate_list.php"); 
+        header("Location: evaluate_list.php");
         exit();
     }
-    
+
     $student = mysqli_fetch_assoc($result);
     $internship_id = $student['internship_id'];
+
+    if (empty($internship_id)) {
+        header("Location: evaluate_list.php?error=no_internship");
+        exit();
+    }
 } else {
     header("Location: evaluate_list.php");
     exit();
@@ -34,6 +39,11 @@ if (isset($_GET['id'])) {
 
 // 3. Handle Form Submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    if (empty($internship_id)) {
+        header("Location: evaluate_list.php?error=no_internship");
+        exit();
+    }
+
     $m1 = min(floatval($_POST['m1'] ?? 0), 10);
     $m2 = min(floatval($_POST['m2'] ?? 0), 10);
     $m3 = min(floatval($_POST['m3'] ?? 0), 10);
@@ -42,16 +52,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $m6 = min(floatval($_POST['m6'] ?? 0), 15);
     $m7 = min(floatval($_POST['m7'] ?? 0), 15);
     $m8 = min(floatval($_POST['m8'] ?? 0), 15);
-    
+
     $final_score = $m1 + $m2 + $m3 + $m4 + $m5 + $m6 + $m7 + $m8;
     $feedback = mysqli_real_escape_string($conn, $_POST['feedback']);
 
     $check = mysqli_query($conn, "SELECT assessment_id FROM assessments WHERE internship_id = '$internship_id'");
-    
+
     if (mysqli_num_rows($check) > 0) {
         $sql = "UPDATE assessments SET total_mark = '$final_score', comments = '$feedback' WHERE internship_id = '$internship_id'";
     } else {
-        $ass_id = "EVAL-" . time(); 
+        $ass_id = "EVAL-" . time();
         $sql = "INSERT INTO assessments (assessment_id, internship_id, total_mark, comments) VALUES ('$ass_id', '$internship_id', '$final_score', '$feedback')";
     }
 
@@ -109,43 +119,91 @@ include("header.php");
                         <tr class="ep-rubric-row">
                             <td class="ep-rubric-name">Undertaking Tasks/Projects</td>
                             <td class="ep-rubric-weight">10%</td>
-                            <td class="ep-rubric-input-cell"><input type="number" name="m1" class="ep-rubric-input" max="10" min="0" step="0.5" required></td>
+                            <td class="ep-rubric-input-cell">
+                                <div class="mark-stepper">
+                                    <button type="button" class="step-btn" onclick="stepMark(this,-1)">−</button>
+                                    <input type="number" name="m1" class="ep-rubric-input" max="10" min="0" step="0.5" placeholder="0" required>
+                                    <button type="button" class="step-btn" onclick="stepMark(this,1)">+</button>
+                                </div>
+                            </td>
                         </tr>
                         <tr class="ep-rubric-row">
                             <td class="ep-rubric-name">Health &amp; Safety</td>
                             <td class="ep-rubric-weight">10%</td>
-                            <td class="ep-rubric-input-cell"><input type="number" name="m2" class="ep-rubric-input" max="10" min="0" step="0.5" required></td>
+                            <td class="ep-rubric-input-cell">
+                                <div class="mark-stepper">
+                                    <button type="button" class="step-btn" onclick="stepMark(this,-1)">−</button>
+                                    <input type="number" name="m2" class="ep-rubric-input" max="10" min="0" step="0.5" placeholder="0" required>
+                                    <button type="button" class="step-btn" onclick="stepMark(this,1)">+</button>
+                                </div>
+                            </td>
                         </tr>
                         <tr class="ep-rubric-row">
                             <td class="ep-rubric-name">Theoretical Knowledge</td>
                             <td class="ep-rubric-weight">10%</td>
-                            <td class="ep-rubric-input-cell"><input type="number" name="m3" class="ep-rubric-input" max="10" min="0" step="0.5" required></td>
+                            <td class="ep-rubric-input-cell">
+                                <div class="mark-stepper">
+                                    <button type="button" class="step-btn" onclick="stepMark(this,-1)">−</button>
+                                    <input type="number" name="m3" class="ep-rubric-input" max="10" min="0" step="0.5" placeholder="0" required>
+                                    <button type="button" class="step-btn" onclick="stepMark(this,1)">+</button>
+                                </div>
+                            </td>
                         </tr>
                         <tr class="ep-rubric-row">
                             <td class="ep-rubric-name">Language Clarity</td>
                             <td class="ep-rubric-weight">10%</td>
-                            <td class="ep-rubric-input-cell"><input type="number" name="m5" class="ep-rubric-input" max="10" min="0" step="0.5" required></td>
+                            <td class="ep-rubric-input-cell">
+                                <div class="mark-stepper">
+                                    <button type="button" class="step-btn" onclick="stepMark(this,-1)">−</button>
+                                    <input type="number" name="m5" class="ep-rubric-input" max="10" min="0" step="0.5" placeholder="0" required>
+                                    <button type="button" class="step-btn" onclick="stepMark(this,1)">+</button>
+                                </div>
+                            </td>
                         </tr>
                         <tr class="ep-section-divider"><td colspan="3">Extended Criteria &mdash; 15% each</td></tr>
                         <tr class="ep-rubric-row">
                             <td class="ep-rubric-name">Report Writing</td>
                             <td class="ep-rubric-weight ep-w-high">15%</td>
-                            <td class="ep-rubric-input-cell"><input type="number" name="m4" class="ep-rubric-input" max="15" min="0" step="0.5" required></td>
+                            <td class="ep-rubric-input-cell">
+                                <div class="mark-stepper">
+                                    <button type="button" class="step-btn" onclick="stepMark(this,-1)">−</button>
+                                    <input type="number" name="m4" class="ep-rubric-input" max="15" min="0" step="0.5" placeholder="0" required>
+                                    <button type="button" class="step-btn" onclick="stepMark(this,1)">+</button>
+                                </div>
+                            </td>
                         </tr>
                         <tr class="ep-rubric-row">
                             <td class="ep-rubric-name">Lifelong Learning</td>
                             <td class="ep-rubric-weight ep-w-high">15%</td>
-                            <td class="ep-rubric-input-cell"><input type="number" name="m6" class="ep-rubric-input" max="15" min="0" step="0.5" required></td>
+                            <td class="ep-rubric-input-cell">
+                                <div class="mark-stepper">
+                                    <button type="button" class="step-btn" onclick="stepMark(this,-1)">−</button>
+                                    <input type="number" name="m6" class="ep-rubric-input" max="15" min="0" step="0.5" placeholder="0" required>
+                                    <button type="button" class="step-btn" onclick="stepMark(this,1)">+</button>
+                                </div>
+                            </td>
                         </tr>
                         <tr class="ep-rubric-row">
                             <td class="ep-rubric-name">Project Management</td>
                             <td class="ep-rubric-weight ep-w-high">15%</td>
-                            <td class="ep-rubric-input-cell"><input type="number" name="m7" class="ep-rubric-input" max="15" min="0" step="0.5" required></td>
+                            <td class="ep-rubric-input-cell">
+                                <div class="mark-stepper">
+                                    <button type="button" class="step-btn" onclick="stepMark(this,-1)">−</button>
+                                    <input type="number" name="m7" class="ep-rubric-input" max="15" min="0" step="0.5" placeholder="0" required>
+                                    <button type="button" class="step-btn" onclick="stepMark(this,1)">+</button>
+                                </div>
+                            </td>
                         </tr>
                         <tr class="ep-rubric-row">
                             <td class="ep-rubric-name">Time Management</td>
                             <td class="ep-rubric-weight ep-w-high">15%</td>
-                            <td class="ep-rubric-input-cell"><input type="number" name="m8" class="ep-rubric-input" max="15" min="0" step="0.5" required></td>
+                            <td class="ep-rubric-input-cell">
+                                <div class="mark-stepper">
+                                    <button type="button" class="step-btn" onclick="stepMark(this,-1)">−</button>
+                                    <input type="number" name="m8" class="ep-rubric-input" max="15" min="0" step="0.5" placeholder="0" required>
+                                    <button type="button" class="step-btn" onclick="stepMark(this,1)">+</button>
+                                </div>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -173,6 +231,19 @@ include("header.php");
 </div>
 
 <script>
+function stepMark(btn, dir) {
+    const input = btn.parentElement.querySelector('.ep-rubric-input');
+    const step  = parseFloat(input.getAttribute('step'))  || 0.5;
+    const max   = parseFloat(input.getAttribute('max'));
+    const min   = parseFloat(input.getAttribute('min'))   || 0;
+    let val = parseFloat(input.value);
+    if (isNaN(val)) val = 0;
+    val = Math.round((val + dir * step) * 100) / 100; // avoid float drift
+    val = Math.min(max, Math.max(min, val));
+    input.value = val;
+    input.dispatchEvent(new Event('input'));
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     const inputs = document.querySelectorAll('.ep-rubric-input');
     const liveTotal = document.getElementById('live-total');

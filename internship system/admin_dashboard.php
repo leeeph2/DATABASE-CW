@@ -46,7 +46,7 @@ include("header.php");
                 Organize faculty assessors, manage supervisor permissions, and assign student pairings.
             </p>
         </div>
-        <a href="manage_assessors.php" class="btn-primary">Manage Assessors</a>
+        <a href="view_assessors.php" class="btn-primary">Manage Assessors</a>
     </div>
 
     <div class="stat-card">
