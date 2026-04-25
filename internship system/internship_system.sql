@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Mar 13, 2026 at 04:25 AM
+-- Generation Time: Apr 25, 2026 at 11:43 AM
 -- Server version: 5.7.24
 -- PHP Version: 8.3.1
 
@@ -28,8 +28,11 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `assessments` (
-  `assessment_id` varchar(10) NOT NULL,
-  `internship_id` varchar(10) DEFAULT NULL,
+  `assessment_id` varchar(15) NOT NULL,
+  `internship_id` int(11) DEFAULT NULL,
+  `assessor_id` varchar(20) DEFAULT NULL,
+  `assessment_type` enum('Academic','Industry') NOT NULL,
+  `assessor_type` enum('Lecturer','Supervisor') NOT NULL,
   `score_tasks` int(11) DEFAULT '0',
   `score_safety` int(11) DEFAULT '0',
   `score_theory` int(11) DEFAULT '0',
@@ -43,6 +46,45 @@ CREATE TABLE `assessments` (
   `date_evaluated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+--
+-- Dumping data for table `assessments`
+--
+
+INSERT INTO `assessments` (`assessment_id`, `internship_id`, `assessor_id`, `assessment_type`, `assessor_type`, `score_tasks`, `score_safety`, `score_theory`, `score_presentation`, `score_clarity`, `score_learning`, `score_project_mgmt`, `score_time_mgmt`, `total_mark`, `comments`, `date_evaluated`) VALUES
+('ASS-L-001', NULL, 'LEC-002', 'Academic', 'Lecturer', 80, 75, 78, 82, 76, 80, 79, 81, 79.20, 'Student demonstrates good understanding of workplace requirements and strong project management.', '2026-04-18 09:00:00'),
+('ASS-L-003', NULL, 'LEC-002', 'Academic', 'Lecturer', 90, 88, 92, 91, 89, 93, 90, 88, 90.20, 'Outstanding performance across all criteria. Clarissa is a model intern for this cohort.', '2026-04-18 10:30:00'),
+('ASS-L-028', NULL, 'LEC-003', 'Academic', 'Lecturer', 85, 83, 87, 86, 84, 88, 85, 83, 85.20, 'Shunxi demonstrated excellent written communication and strong technical skills throughout.', '2026-04-15 09:00:00'),
+('ASS-S-007', NULL, 'SUP-004', 'Academic', 'Supervisor', 77, 80, 75, 78, 76, 79, 78, 77, 77.60, 'Good performance with consistent attendance and a proactive attitude on the floor.', '2026-04-19 08:30:00'),
+('ASS-S-028', NULL, 'SUP-004', 'Academic', 'Supervisor', 84, 82, 86, 88, 85, 87, 84, 82, 84.85, 'A reliable and self-motivated intern. Completed all assigned tasks ahead of schedule.', '2026-04-16 10:00:00'),
+('EVAL-1777020403', 73, NULL, 'Academic', 'Lecturer', 0, 0, 0, 0, 0, 0, 0, 0, 86.50, 'sdfghjkl', '2026-04-24 08:46:43'),
+('EVAL-1777026775', 34, NULL, 'Academic', 'Lecturer', 0, 0, 0, 0, 0, 0, 0, 0, 86.00, 'good\r\n', '2026-04-24 10:32:55'),
+('EVAL-1777026811', 49, NULL, 'Academic', 'Lecturer', 0, 0, 0, 0, 0, 0, 0, 0, 52.00, 'poor', '2026-04-24 10:33:31'),
+('EVAL-1777092345', 64, NULL, 'Academic', 'Lecturer', 10, 5, 6, 14, 9, 14, 15, 12, 84.00, 'oklah', '2026-04-25 11:05:39'),
+('EVAL-1777106209', 41, NULL, 'Academic', 'Lecturer', 0, 0, 0, 0, 0, 0, 0, 0, 92.00, 'very goodddd\r\n', '2026-04-25 08:36:49'),
+('EVAL-1777106236', 63, NULL, 'Academic', 'Lecturer', 0, 0, 0, 0, 0, 0, 0, 0, 84.50, 'qwertyuiolkjhgfdsaxcvbn\r\n', '2026-04-25 08:37:16'),
+('IND-1777114436', 64, 'SUP-001', 'Industry', 'Supervisor', 10, 10, 10, 11, 10, 12, 12, 11, 81.00, 'oklah', '2026-04-25 10:53:56');
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `final_results`
+-- (See below for the actual view)
+--
+CREATE TABLE `final_results` (
+`internship_id` int(11)
+,`student_id` varchar(20)
+,`student_name` varchar(100)
+,`email` varchar(100)
+,`programme_name` varchar(100)
+,`company_name` varchar(150)
+,`internship_status` enum('Ongoing','Completed','Evaluated')
+,`lecturer_name` varchar(100)
+,`supervisor_name` varchar(100)
+,`lecturer_total` decimal(5,2)
+,`supervisor_total` decimal(5,2)
+,`final_score` decimal(7,2)
+);
+
 -- --------------------------------------------------------
 
 --
@@ -50,48 +92,99 @@ CREATE TABLE `assessments` (
 --
 
 CREATE TABLE `internships` (
-  `internship_id` varchar(20) NOT NULL,
   `student_id` varchar(20) NOT NULL,
-  `assessor_id` varchar(20) DEFAULT NULL,
+  `lecturer_id` varchar(20) DEFAULT NULL,
+  `supervisor_id` varchar(20) DEFAULT NULL,
   `company_name` varchar(150) NOT NULL,
-  `internship_status` enum('Ongoing','Completed','Evaluated') DEFAULT 'Ongoing'
+  `internship_status` enum('Ongoing','Completed','Evaluated') DEFAULT 'Ongoing',
+  `internship_id` int(11) NOT NULL,
+  `final_mark` decimal(5,2) DEFAULT '0.00'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `internships`
 --
 
-INSERT INTO `internships` (`internship_id`, `student_id`, `assessor_id`, `company_name`, `internship_status`) VALUES
-('INT-1', '20810450', 'LEC-002', 'Intel Malaysia', 'Ongoing'),
-('INT-10', '20709815', 'LEC-002', 'Grab Holdings', 'Ongoing'),
-('INT-11', '20799262', 'LEC-002', 'AWS Malaysia', 'Ongoing'),
-('INT-12', '20806316', 'LEC-002', 'AWS Malaysia', 'Ongoing'),
-('INT-13', '20807535', 'LEC-002', 'Shopee MY', 'Ongoing'),
-('INT-14', '20700617', 'LEC-002', 'Shopee MY', 'Ongoing'),
-('INT-15', '20723858', 'LEC-002', 'Tesla Services', 'Ongoing'),
-('INT-16', '20713226', 'LEC-002', 'Tesla Services', 'Ongoing'),
-('INT-17', '20793978', 'LEC-002', 'IBM Malaysia', 'Ongoing'),
-('INT-18', '20715078', 'LEC-002', 'IBM Malaysia', 'Ongoing'),
-('INT-19', '20805281', 'LEC-002', 'Oracle Corp', 'Ongoing'),
-('INT-2', '20713102', 'LEC-002', 'Intel Malaysia', 'Ongoing'),
-('INT-20', '20796056', 'LEC-002', 'Oracle Corp', 'Ongoing'),
-('INT-21', '20708501', 'LEC-002', 'Dell Technologies', 'Ongoing'),
-('INT-22', '20808856', 'LEC-002', 'Dell Technologies', 'Ongoing'),
-('INT-23', '20791965', 'LEC-002', 'Cisco Systems', 'Ongoing'),
-('INT-24', '20806311', 'LEC-002', 'Cisco Systems', 'Ongoing'),
-('INT-25', '20797569', 'LEC-002', 'Samsung Electronics', 'Ongoing'),
-('INT-26', '20713495', 'LEC-002', 'Samsung Electronics', 'Ongoing'),
-('INT-27', '20718823', 'LEC-002', 'Apple Malaysia', 'Ongoing'),
-('INT-28', '20706107', 'LEC-002', 'Apple Malaysia', 'Evaluated'),
-('INT-29', '20716333', 'LEC-002', 'Maxis Berhad', 'Ongoing'),
-('INT-3', '20722321', 'LEC-002', 'Google MY', 'Ongoing'),
-('INT-30', '20806478', 'LEC-002', 'Maxis Berhad', 'Ongoing'),
-('INT-4', '20709820', 'LEC-002', 'Google MY', 'Ongoing'),
-('INT-5', '20804611', 'LEC-002', 'Microsoft KL', 'Ongoing'),
-('INT-6', '20808475', 'LEC-002', 'Microsoft KL', 'Ongoing'),
-('INT-7', '20801771', 'LEC-002', 'Petronas', 'Ongoing'),
-('INT-8', '20797468', 'LEC-002', 'Petronas', 'Ongoing'),
-('INT-9', '20709091', 'LEC-002', 'Grab Holdings', 'Ongoing');
+INSERT INTO `internships` (`student_id`, `lecturer_id`, `supervisor_id`, `company_name`, `internship_status`, `internship_id`, `final_mark`) VALUES
+('20609637', 'LEC-003', 'SUP-001', 'Huawei Malaysia', 'Ongoing', 1, 0.00),
+('20675394', 'LEC-003', 'SUP-001', 'Huawei Malaysia', 'Ongoing', 2, 0.00),
+('20676720', 'LEC-004', 'SUP-002', 'Axiata Group', 'Ongoing', 3, 0.00),
+('20679455', 'LEC-004', 'SUP-002', 'Axiata Group', 'Ongoing', 4, 0.00),
+('20683692', 'LEC-004', 'SUP-003', 'Celcom Digi', 'Ongoing', 5, 0.00),
+('20690412', 'LEC-004', 'SUP-003', 'Celcom Digi', 'Ongoing', 6, 0.00),
+('20700617', 'LEC-002', 'SUP-002', 'Shopee MY', 'Ongoing', 7, 0.00),
+('20701943', 'LEC-004', 'SUP-004', 'TM Malaysia', 'Ongoing', 8, 0.00),
+('20703441', 'LEC-004', 'SUP-004', 'TM Malaysia', 'Ongoing', 9, 0.00),
+('20705302', 'LEC-004', 'SUP-005', 'Mimos Berhad', 'Ongoing', 10, 0.00),
+('20705375', 'LEC-004', 'SUP-005', 'Mimos Berhad', 'Ongoing', 11, 0.00),
+('20706107', 'LEC-003', 'SUP-004', 'Apple Malaysia', 'Evaluated', 12, 0.00),
+('20708501', 'LEC-003', 'SUP-001', 'Dell Technologies', 'Ongoing', 13, 0.00),
+('20708827', 'LEC-004', 'SUP-001', 'Ericsson Malaysia', 'Ongoing', 14, 0.00),
+('20709091', 'LEC-002', 'SUP-005', 'Grab Holdings', 'Ongoing', 15, 0.00),
+('20709815', 'LEC-002', 'SUP-005', 'Grab Holdings', 'Ongoing', 16, 0.00),
+('20709820', 'LEC-002', 'SUP-002', 'Google MY', 'Ongoing', 17, 0.00),
+('20710895', 'LEC-004', 'SUP-001', 'Ericsson Malaysia', 'Ongoing', 18, 0.00),
+('20711344', 'LEC-004', 'SUP-002', 'Motorola Solutions', 'Ongoing', 19, 0.00),
+('20711677', 'LEC-004', 'SUP-002', 'Motorola Solutions', 'Ongoing', 20, 0.00),
+('20712533', 'LEC-004', 'SUP-003', 'Lenovo Malaysia', 'Ongoing', 21, 0.00),
+('20713102', 'LEC-002', 'SUP-001', 'Intel Malaysia', 'Ongoing', 22, 0.00),
+('20713226', 'LEC-002', 'SUP-003', 'Tesla Services', 'Ongoing', 23, 0.00),
+('20713495', 'LEC-003', 'SUP-003', 'Samsung Electronics', 'Ongoing', 24, 0.00),
+('20713862', 'LEC-004', 'SUP-003', 'Lenovo Malaysia', 'Ongoing', 25, 0.00),
+('20713959', 'LEC-004', 'SUP-004', 'NTT Malaysia', 'Ongoing', 26, 0.00),
+('20713963', 'LEC-004', 'SUP-004', 'NTT Malaysia', 'Ongoing', 27, 0.00),
+('20714943', 'LEC-005', 'SUP-005', 'Bosch Malaysia', 'Ongoing', 28, 0.00),
+('20715075', 'LEC-005', 'SUP-005', 'Bosch Malaysia', 'Ongoing', 29, 0.00),
+('20715078', 'LEC-003', 'SUP-004', 'IBM Malaysia', 'Ongoing', 30, 0.00),
+('20716333', 'LEC-003', 'SUP-005', 'Maxis Berhad', 'Ongoing', 31, 0.00),
+('20717493', 'LEC-005', 'SUP-001', 'Siemens Malaysia', 'Ongoing', 32, 0.00),
+('20718823', 'LEC-003', 'SUP-004', 'Apple Malaysia', 'Ongoing', 33, 0.00),
+('20722321', 'LEC-002', 'SUP-002', 'Google MY', 'Ongoing', 34, 86.00),
+('20723833', 'LEC-005', 'SUP-001', 'Siemens Malaysia', 'Ongoing', 35, 0.00),
+('20723858', 'LEC-002', 'SUP-003', 'Tesla Services', 'Ongoing', 36, 0.00),
+('20749006', 'LEC-005', 'SUP-002', 'HP Malaysia', 'Ongoing', 37, 0.00),
+('20780335', 'LEC-005', 'SUP-002', 'HP Malaysia', 'Ongoing', 38, 0.00),
+('20782788', 'LEC-005', 'SUP-003', 'Accenture MY', 'Ongoing', 39, 0.00),
+('20791953', 'LEC-005', 'SUP-003', 'Accenture MY', 'Ongoing', 40, 0.00),
+('20791965', 'LEC-003', 'SUP-002', 'Cisco Systems', 'Ongoing', 41, 0.00),
+('20792685', 'LEC-005', 'SUP-004', 'Deloitte Malaysia', 'Ongoing', 42, 0.00),
+('20793088', 'LEC-005', 'SUP-004', 'Deloitte Malaysia', 'Ongoing', 43, 0.00),
+('20793790', 'LEC-005', 'SUP-005', 'KPMG Malaysia', 'Ongoing', 44, 0.00),
+('20793978', 'LEC-003', 'SUP-004', 'IBM Malaysia', 'Ongoing', 45, 0.00),
+('20794457', 'LEC-005', 'SUP-005', 'KPMG Malaysia', 'Ongoing', 46, 0.00),
+('20796056', 'LEC-003', 'SUP-005', 'Oracle Corp', 'Ongoing', 47, 0.00),
+('20796507', 'LEC-005', 'SUP-001', 'PwC Malaysia', 'Ongoing', 48, 0.00),
+('20797468', 'LEC-002', 'SUP-004', 'Petronas', 'Ongoing', 49, 52.00),
+('20797569', 'LEC-003', 'SUP-003', 'Samsung Electronics', 'Ongoing', 50, 0.00),
+('20799262', 'LEC-002', 'SUP-001', 'AWS Malaysia', 'Ongoing', 51, 0.00),
+('20800273', 'LEC-005', 'SUP-001', 'PwC Malaysia', 'Ongoing', 52, 0.00),
+('20800646', 'LEC-005', 'SUP-002', 'EY Malaysia', 'Ongoing', 53, 0.00),
+('20801522', 'LEC-006', 'SUP-002', 'EY Malaysia', 'Ongoing', 54, 0.00),
+('20801771', 'LEC-002', 'SUP-004', 'Petronas', 'Ongoing', 55, 0.00),
+('20802060', 'LEC-006', 'SUP-003', 'Maybank', 'Ongoing', 56, 0.00),
+('20803923', 'LEC-006', 'SUP-003', 'Maybank', 'Ongoing', 57, 0.00),
+('20803979', 'LEC-006', 'SUP-004', 'CIMB Group', 'Ongoing', 58, 0.00),
+('20804611', 'LEC-002', 'SUP-003', 'Microsoft KL', 'Ongoing', 59, 0.00),
+('20804966', 'LEC-006', 'SUP-004', 'CIMB Group', 'Ongoing', 60, 0.00),
+('20805040', 'LEC-006', 'SUP-005', 'RHB Bank', 'Ongoing', 61, 0.00),
+('20805230', 'LEC-006', 'SUP-005', 'RHB Bank', 'Ongoing', 62, 0.00),
+('20805281', 'LEC-003', 'SUP-005', 'Oracle Corp', 'Ongoing', 63, 0.00),
+('20806299', 'LEC-006', 'SUP-001', 'Telekom Malaysia', 'Ongoing', 64, 87.50),
+('20806311', 'LEC-003', 'SUP-002', 'Cisco Systems', 'Ongoing', 65, 0.00),
+('20806316', 'LEC-002', 'SUP-001', 'AWS Malaysia', 'Ongoing', 66, 0.00),
+('20806377', 'LEC-006', 'SUP-001', 'Telekom Malaysia', 'Ongoing', 67, 0.00),
+('20806478', 'LEC-003', 'SUP-005', 'Maxis Berhad', 'Ongoing', 68, 0.00),
+('20806629', 'LEC-006', 'SUP-002', 'Hong Leong Bank', 'Ongoing', 69, 0.00),
+('20807243', 'LEC-006', 'SUP-002', 'Hong Leong Bank', 'Ongoing', 70, 0.00),
+('20807535', 'LEC-002', 'SUP-002', 'Shopee MY', 'Ongoing', 71, 0.00),
+('20807958', 'LEC-006', 'SUP-003', 'Tenaga Nasional', 'Ongoing', 72, 0.00),
+('20808475', 'LEC-002', 'SUP-003', 'Microsoft KL', 'Ongoing', 73, 86.50),
+('20808713', 'LEC-006', 'SUP-003', 'Tenaga Nasional', 'Ongoing', 74, 0.00),
+('20808856', 'LEC-003', 'SUP-001', 'Dell Technologies', 'Ongoing', 75, 0.00),
+('20809859', 'LEC-006', 'SUP-004', 'Sime Darby', 'Ongoing', 76, 0.00),
+('20810450', 'LEC-002', 'SUP-001', 'Intel Malaysia', 'Ongoing', 77, 0.00),
+('20811803', 'LEC-006', 'SUP-004', 'Sime Darby', 'Ongoing', 78, 0.00),
+('20814150', 'LEC-006', 'SUP-005', 'Petronas Dagangan', 'Ongoing', 79, 0.00);
 
 -- --------------------------------------------------------
 
@@ -121,98 +214,96 @@ INSERT INTO `programmes` (`programme_id`, `programme_name`) VALUES
 
 CREATE TABLE `students` (
   `student_id` varchar(20) NOT NULL,
-  `internship_id` varchar(20) DEFAULT NULL,
   `student_name` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
   `programme_id` varchar(20) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `supervisor_id` varchar(20) DEFAULT NULL
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `students`
 --
 
-INSERT INTO `students` (`student_id`, `internship_id`, `student_name`, `email`, `programme_id`, `created_at`, `supervisor_id`) VALUES
-('20609637', 'INT-20609637', 'Siyu Ge', 'hfysg5@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-002'),
-('20675394', 'INT-20675394', 'Kamila Mahenti', 'hfykm5@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-003'),
-('20676720', 'INT-20676720', 'Jialue Liao', 'hfyjl36@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-004'),
-('20679455', 'INT-20679455', 'Mohamed Hany Abdelmaksoud', 'hfyma18@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-005'),
-('20683692', 'INT-20683692', 'Youssef Mahran', 'hfyym6@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-004'),
-('20690412', 'INT-20690412', 'Mariah Azmir Faizal', 'efyma48@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-006'),
-('20700617', 'INT-20700617', 'Zhe Gao', 'hfyzg1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-002'),
-('20701943', 'INT-20701943', 'Jun Zhe Yeong', 'hfyjy12@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-005'),
-('20703441', 'INT-20703441', 'Jia En Sai', 'hfyjs12@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-003'),
-('20705302', 'INT-20705302', 'Hin Joong Soo', 'hfyhs5@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-006'),
-('20705375', 'INT-20705375', 'Husam Feras Hosam Boshnaq', 'efyhh14@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-006'),
-('20706107', 'INT-20706107', 'Shunxi Yang', 'hfysy8@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-002'),
-('20708501', 'INT-20708501', 'You Sheng, Ciaran Ooi', 'hfyyo2@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-002'),
-('20708827', 'INT-20708827', 'Rachel Huey Yen Lee', 'hfyrl4@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-003'),
-('20709091', 'INT-20709091', 'Yun Xin Ng', 'efyyn8@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-004'),
-('20709815', 'INT-20709815', 'Lang Qin', 'efylq1@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-005'),
-('20709820', 'INT-20709820', 'Junta Suzuki', 'hfyjs13@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-004'),
-('20710895', 'INT-20710895', 'Jian Yun Tan', 'hfyjt17@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-005'),
-('20711344', 'INT-20711344', 'Aiko Yi Rou Wong', 'hfyaw3@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-006'),
-('20711677', 'INT-20711677', 'Wei Feng Hue', 'hfywh4@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-002'),
-('20712533', 'INT-20712533', 'Yoonjae Lee', 'hfyyl16@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-003'),
-('20713102', 'INT-20713102', 'Jun Jiet Jong', 'hfyjj4@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-004'),
-('20713226', 'INT-20713226', 'Li You Lee', 'hfyll10@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-005'),
-('20713495', 'INT-20713495', 'Lei Su', 'hfyls4@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-006'),
-('20713862', 'INT-20713862', 'Zikai Wang', 'hfyzw6@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-003'),
-('20713959', 'INT-20713959', 'Meenakshi Murugappan', 'hfymm21@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-006'),
-('20713963', 'INT-20713963', 'Seann Ryu Hearn Kwan', 'hfysk9@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-004'),
-('20714943', 'INT-20714943', 'Linjie Fu', 'hfylf1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-002'),
-('20715075', 'INT-20715075', 'Jiexun Tang', 'efyjt32@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-003'),
-('20715078', 'INT-20715078', 'Muhammad Faysal Md Mijanur Rahman', 'hfymm22@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-005'),
-('20716333', 'INT-20716333', 'Grace Shuang Yee', 'hfygy1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-004'),
-('20717493', 'INT-20717493', 'Kang Wei Chan', 'hfykc15@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-006'),
-('20718823', 'INT-20718823', 'Menghuan Wu', 'hcymw2@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-002'),
-('20722321', 'INT-20722321', 'Clarissa Jia Yi Kiew', 'hfyck5@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-005'),
-('20723833', 'INT-20723833', 'Ian Yu Sheng Yap', 'hfyiy1@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-002'),
-('20723858', 'INT-20723858', 'Kiara Leshan Kwo', 'hfykk7@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-006'),
-('20749006', 'INT-20749006', 'Chenhaoxi Zhou', 'hcycz1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-003'),
-('20780335', 'INT-20780335', 'Fathima Sakinah Dil Fairaz', 'hcyfd1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-002'),
-('20782788', 'INT-20782788', 'Ruining Ding', 'hcyrd2@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-004'),
-('20791953', 'INT-20791953', 'Tianli Chen', 'hcytc2@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-003'),
-('20791965', 'INT-20791965', 'Chaoyuan Zhang', 'hcycz2@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-003'),
-('20792685', 'INT-20792685', 'Mingcai Ling', 'hcyml3@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-005'),
-('20793088', 'INT-20793088', 'Changhui Deng', 'hcycd1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-006'),
-('20793790', 'INT-20793790', 'Wu Han Hue', 'hcywh5@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-004'),
-('20793978', 'INT-20793978', 'Terence Kian Seng Lee', 'hcytl3@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-002'),
-('20794457', 'INT-20794457', 'Ali Ibrahim Alkomey', 'hcyai1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-003'),
-('20796056', 'INT-20796056', 'Mingxu Liu', 'hcyml4@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-004'),
-('20796507', 'INT-20796507', 'Yifei Xie', 'hcyyx2@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-005'),
-('20797468', 'INT-20797468', 'Guangbing Liu', 'hcygl2@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-006'),
-('20797569', 'INT-20797569', 'Lang Chen', 'hcylc3@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-002'),
-('20799262', 'INT-20799262', 'Nanxi Zhang', 'hcynz1@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-003'),
-('20800273', 'INT-20800273', 'Jun Bin Wong', 'hcyjw4@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-004'),
-('20800646', 'INT-20800646', 'Shiyu Cao', 'hcysc4@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-005'),
-('20801522', 'INT-20801522', 'Hao Yin Ng', 'edyhn2@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-006'),
-('20801771', 'INT-20801771', 'Huda Amin', 'hcyha1@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-005'),
-('20802060', 'INT-20802060', 'Atsuhiro Tsukata', 'hcyat2@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-004'),
-('20803923', 'INT-20803923', 'Chenyu Li', 'hcycl7@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-002'),
-('20803979', 'INT-20803979', 'Zhiling Tang', 'hcyzt5@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-006'),
-('20804611', 'INT-20804611', 'Sixuan Wang', 'hcysw2@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-005'),
-('20804966', 'INT-20804966', 'Samay Rayapuram', 'hcysr4@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-002'),
-('20805040', 'INT-20805040', 'Aazzu Adam Khalid', 'hcyaa11@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-003'),
-('20805230', 'INT-20805230', 'Ying Qi Tan', 'hcyyt3@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-006'),
-('20805281', 'INT-20805281', 'Chen Yi Lee', 'hcycl8@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-004'),
-('20806299', 'INT-20806299', 'Daniyal Khan', 'hcydk2@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-005'),
-('20806311', 'INT-20806311', 'Yangting Zhuang', 'hcyyz2@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-002'),
-('20806316', 'INT-20806316', 'Hanrui Zou', 'hcyhz3@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-003'),
-('20806377', 'INT-20806377', 'Khalid Mohamad Shaker', 'hcykm1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-006'),
-('20806478', 'INT-20806478', 'Jiachang Ying', 'hcyjy6@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-003'),
-('20806629', 'INT-20806629', 'Qianqian Yang', 'hcyqy1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-004'),
-('20807243', 'INT-20807243', 'Jacques Milton', 'hcyjm2@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-004'),
-('20807535', 'INT-20807535', 'Richard Erkhov', 'hcyre1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-005'),
-('20807958', 'INT-20807958', 'Xitai Li', 'hcyxl7@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-002'),
-('20808475', 'INT-20808475', 'Canshuo Yu', 'hcycy1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-006'),
-('20808713', 'INT-20808713', 'Lei Zhu', 'hcylz1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-003'),
-('20808856', 'INT-20808856', 'Muhammad Rafay Shahid', 'hcyms6@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54', 'LEC-005'),
-('20809859', 'INT-20809859', 'Khizer Asim', 'hcyka4@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-004'),
-('20810450', 'INT-20810450', 'Yuqing He', 'hcyyh3@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-002'),
-('20811803', 'INT-20811803', 'Shi Qi Koh', 'hcysk3@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54', 'LEC-003'),
-('20814150', 'INT-20814150', 'Qoid Rafif Mohd Fadly', 'hcyqm1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54', 'LEC-005');
+INSERT INTO `students` (`student_id`, `student_name`, `email`, `programme_id`, `created_at`) VALUES
+('20609637', 'Siyu Ge', 'hfysg5@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20675394', 'Kamila Mahenti', 'hfykm5@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20676720', 'Jialue Liao', 'hfyjl36@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20679455', 'Mohamed Hany Abdelmaksoud', 'hfyma18@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20683692', 'Youssef Mahran', 'hfyym6@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20690412', 'Mariah Azmir Faizal', 'efyma48@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20700617', 'Zhe Gao', 'hfyzg1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20701943', 'Jun Zhe Yeong', 'hfyjy12@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20703441', 'Jia En Sai', 'hfyjs12@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20705302', 'Hin Joong Soo', 'hfyhs5@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20705375', 'Husam Feras Hosam Boshnaq', 'efyhh14@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20706107', 'Shunxi Yang', 'hfysy8@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20708501', 'You Sheng, Ciaran Ooi', 'hfyyo2@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20708827', 'Rachel Huey Yen Lee', 'hfyrl4@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20709091', 'Yun Xin Ng', 'efyyn8@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20709815', 'Lang Qin', 'efylq1@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20709820', 'Junta Suzuki', 'hfyjs13@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20710895', 'Jian Yun Tan', 'hfyjt17@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20711344', 'Aiko Yi Rou Wong', 'hfyaw3@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20711677', 'Wei Feng Hue', 'hfywh4@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20712533', 'Yoonjae Lee', 'hfyyl16@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20713102', 'Jun Jiet Jong', 'hfyjj4@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20713226', 'Li You Lee', 'hfyll10@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20713495', 'Lei Su', 'hfyls4@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20713862', 'Zikai Wang', 'hfyzw6@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20713959', 'Meenakshi Murugappan', 'hfymm21@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20713963', 'Seann Ryu Hearn Kwan', 'hfysk9@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20714943', 'Linjie Fu', 'hfylf1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20715075', 'Jiexun Tang', 'efyjt32@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20715078', 'Muhammad Faysal Md Mijanur Rahman', 'hfymm22@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20716333', 'Grace Shuang Yee', 'hfygy1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20717493', 'Kang Wei Chan', 'hfykc15@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20718823', 'Menghuan Wu', 'hcymw2@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20722321', 'Clarissa Jia Yi Kiew', 'hfyck5@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20723833', 'Ian Yu Sheng Yap', 'hfyiy1@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20723858', 'Kiara Leshan Kwo', 'hfykk7@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20749006', 'Chenhaoxi Zhou', 'hcycz1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20780335', 'Fathima Sakinah Dil Fairaz', 'hcyfd1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20782788', 'Ruining Ding', 'hcyrd2@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20791953', 'Tianli Chen', 'hcytc2@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20791965', 'Chaoyuan Zhang', 'hcycz2@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20792685', 'Mingcai Ling', 'hcyml3@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20793088', 'Changhui Deng', 'hcycd1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20793790', 'Wu Han Hue', 'hcywh5@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20793978', 'Terence Kian Seng Lee', 'hcytl3@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20794457', 'Ali Ibrahim Alkomey', 'hcyai1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20796056', 'Mingxu Liu', 'hcyml4@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20796507', 'Yifei Xie', 'hcyyx2@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20797468', 'Guangbing Liu', 'hcygl2@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20797569', 'Lang Chen', 'hcylc3@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20799262', 'Nanxi Zhang', 'hcynz1@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20800273', 'Jun Bin Wong', 'hcyjw4@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20800646', 'Shiyu Cao', 'hcysc4@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20801522', 'Hao Yin Ng', 'edyhn2@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20801771', 'Huda Amin', 'hcyha1@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20802060', 'Atsuhiro Tsukata', 'hcyat2@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20803923', 'Chenyu Li', 'hcycl7@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20803979', 'Zhiling Tang', 'hcyzt5@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20804611', 'Sixuan Wang', 'hcysw2@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20804966', 'Samay Rayapuram', 'hcysr4@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20805040', 'Aazzu Adam Khalid', 'hcyaa11@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20805230', 'Ying Qi Tan', 'hcyyt3@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20805281', 'Chen Yi Lee', 'hcycl8@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20806299', 'Daniyal Khan', 'hcydk2@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20806311', 'Yangting Zhuang', 'hcyyz2@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20806316', 'Hanrui Zou', 'hcyhz3@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20806377', 'Khalid Mohamad Shaker', 'hcykm1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20806478', 'Jiachang Ying', 'hcyjy6@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20806629', 'Qianqian Yang', 'hcyqy1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20807243', 'Jacques Milton', 'hcyjm2@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20807535', 'Richard Erkhov', 'hcyre1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20807958', 'Xitai Li', 'hcyxl7@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20808475', 'Canshuo Yu', 'hcycy1@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20808713', 'Lei Zhu', 'hcylz1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20808856', 'Muhammad Rafay Shahid', 'hcyms6@nottingham.edu.my', 'PRG-2', '2026-03-02 06:52:54'),
+('20809859', 'Khizer Asim', 'hcyka4@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54'),
+('20810450', 'Yuqing He', 'hcyyh3@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20811803', 'Shi Qi Koh', 'hcysk3@nottingham.edu.my', 'PRG-1', '2026-03-02 06:52:54'),
+('20814150', 'Qoid Rafif Mohd Fadly', 'hcyqm1@nottingham.edu.my', 'PRG-3', '2026-03-02 06:52:54');
 
 -- --------------------------------------------------------
 
@@ -225,7 +316,7 @@ CREATE TABLE `users` (
   `username` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
   `full_name` varchar(100) NOT NULL,
-  `role` enum('Admin','Assessor') NOT NULL DEFAULT 'Assessor',
+  `role` enum('Admin','Lecturer','Supervisor') NOT NULL DEFAULT 'Lecturer',
   `last_login` datetime DEFAULT NULL,
   `otp_code` varchar(6) DEFAULT NULL,
   `otp_expires` datetime DEFAULT NULL
@@ -236,12 +327,17 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `username`, `password`, `full_name`, `role`, `last_login`, `otp_code`, `otp_expires`) VALUES
-('ADM-1', 'admin1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dr. Aris Brown', 'Admin', NULL, NULL, NULL),
-('LEC-002', 'lec1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dr. Robert Low', 'Assessor', NULL, NULL, NULL),
-('LEC-003', 'lec2', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Ms. Sarah Lim', 'Assessor', NULL, NULL, NULL),
-('LEC-004', 'lec3', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Mr. Kevin Tan', 'Assessor', NULL, NULL, NULL),
-('LEC-005', 'lec4', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dr. Jane Smith', 'Assessor', NULL, NULL, NULL),
-('LEC-006', 'lec5', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Prof. Wong Kar', 'Assessor', NULL, NULL, NULL);
+('ADM-1', 'admin1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dr. Aris Brown', 'Admin', NULL, '333029', '2026-04-25 19:52:24'),
+('LEC-002', 'lec1', '$2y$10$6O2lRZYQQIGjcZBEPVXCquI9r4dcCg1k3AD1B8.EVn5r9x.BfuzDu', 'Dr. Robert Low', 'Lecturer', NULL, '276932', '2026-04-25 14:02:56'),
+('LEC-003', 'lec2', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Ms. Sarah Lim', 'Lecturer', NULL, '273792', '2026-04-25 17:19:51'),
+('LEC-004', 'lec3', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Mr. Kevin Tan', 'Lecturer', NULL, NULL, NULL),
+('LEC-005', 'lec4', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dr. Jane Smith', 'Lecturer', NULL, NULL, NULL),
+('LEC-006', 'lec5', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Prof. Wong Kar', 'Lecturer', NULL, NULL, NULL),
+('SUP-001', 'sup1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Mr. Raj Kumar', 'Supervisor', NULL, NULL, NULL),
+('SUP-002', 'sup2', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Ms. Priya Nair', 'Supervisor', NULL, NULL, NULL),
+('SUP-003', 'sup3', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Mr. Ahmad Zaki', 'Supervisor', NULL, NULL, NULL),
+('SUP-004', 'sup4', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Ms. Chen Li Hua', 'Supervisor', NULL, NULL, NULL),
+('SUP-005', 'sup5', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Mr. David Yong', 'Supervisor', NULL, NULL, NULL);
 
 --
 -- Indexes for dumped tables
@@ -252,7 +348,8 @@ INSERT INTO `users` (`user_id`, `username`, `password`, `full_name`, `role`, `la
 --
 ALTER TABLE `assessments`
   ADD PRIMARY KEY (`assessment_id`),
-  ADD UNIQUE KEY `internship_id` (`internship_id`);
+  ADD UNIQUE KEY `uq_internship_assessor_type` (`internship_id`,`assessor_type`),
+  ADD KEY `fk_assessment_assessor` (`assessor_id`);
 
 --
 -- Indexes for table `internships`
@@ -260,7 +357,8 @@ ALTER TABLE `assessments`
 ALTER TABLE `internships`
   ADD PRIMARY KEY (`internship_id`),
   ADD UNIQUE KEY `student_id` (`student_id`),
-  ADD KEY `internships_ibfk_2` (`assessor_id`);
+  ADD KEY `fk_internship_lecturer` (`lecturer_id`),
+  ADD KEY `fk_internship_supervisor` (`supervisor_id`);
 
 --
 -- Indexes for table `programmes`
@@ -276,8 +374,7 @@ ALTER TABLE `students`
   ADD PRIMARY KEY (`student_id`),
   ADD UNIQUE KEY `email` (`email`),
   ADD KEY `student_name` (`student_name`),
-  ADD KEY `fk_student_programme` (`programme_id`),
-  ADD KEY `fk_student_supervisor` (`supervisor_id`);
+  ADD KEY `fk_student_programme` (`programme_id`);
 
 --
 -- Indexes for table `users`
@@ -287,6 +384,25 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `username` (`username`);
 
 --
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `internships`
+--
+ALTER TABLE `internships`
+  MODIFY `internship_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=80;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `final_results`
+--
+DROP TABLE IF EXISTS `final_results`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `final_results`  AS SELECT `i`.`internship_id` AS `internship_id`, `i`.`student_id` AS `student_id`, `s`.`student_name` AS `student_name`, `s`.`email` AS `email`, `p`.`programme_name` AS `programme_name`, `i`.`company_name` AS `company_name`, `i`.`internship_status` AS `internship_status`, `lu`.`full_name` AS `lecturer_name`, `su`.`full_name` AS `supervisor_name`, `lec`.`total_mark` AS `lecturer_total`, `sup`.`total_mark` AS `supervisor_total`, round(((coalesce(`lec`.`total_mark`,0) + coalesce(`sup`.`total_mark`,0)) / nullif(((case when (`lec`.`total_mark` is not null) then 1 else 0 end) + (case when (`sup`.`total_mark` is not null) then 1 else 0 end)),0)),2) AS `final_score` FROM ((((((`internships` `i` join `students` `s` on((`s`.`student_id` = `i`.`student_id`))) join `programmes` `p` on((`p`.`programme_id` = `s`.`programme_id`))) left join `users` `lu` on((`lu`.`user_id` = `i`.`lecturer_id`))) left join `users` `su` on((`su`.`user_id` = `i`.`supervisor_id`))) left join `assessments` `lec` on(((`lec`.`internship_id` = `i`.`internship_id`) and (`lec`.`assessor_type` = 'Lecturer')))) left join `assessments` `sup` on(((`sup`.`internship_id` = `i`.`internship_id`) and (`sup`.`assessor_type` = 'Supervisor')))) ;
+
+--
 -- Constraints for dumped tables
 --
 
@@ -294,21 +410,22 @@ ALTER TABLE `users`
 -- Constraints for table `assessments`
 --
 ALTER TABLE `assessments`
-  ADD CONSTRAINT `assessments_ibfk_1` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`internship_id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_assessment_assessor` FOREIGN KEY (`assessor_id`) REFERENCES `users` (`user_id`),
+  ADD CONSTRAINT `fk_assessment_internship` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`internship_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `internships`
 --
 ALTER TABLE `internships`
-  ADD CONSTRAINT `internships_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `internships_ibfk_2` FOREIGN KEY (`assessor_id`) REFERENCES `users` (`user_id`);
+  ADD CONSTRAINT `fk_internship_lecturer` FOREIGN KEY (`lecturer_id`) REFERENCES `users` (`user_id`),
+  ADD CONSTRAINT `fk_internship_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_internship_supervisor` FOREIGN KEY (`supervisor_id`) REFERENCES `users` (`user_id`);
 
 --
 -- Constraints for table `students`
 --
 ALTER TABLE `students`
-  ADD CONSTRAINT `fk_student_programme` FOREIGN KEY (`programme_id`) REFERENCES `programmes` (`programme_id`),
-  ADD CONSTRAINT `fk_student_supervisor` FOREIGN KEY (`supervisor_id`) REFERENCES `users` (`user_id`);
+  ADD CONSTRAINT `fk_student_programme` FOREIGN KEY (`programme_id`) REFERENCES `programmes` (`programme_id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
