@@ -5,7 +5,6 @@
 session_start();
 require("database.php");
 
-// Enable mysqli exceptions so try/catch ACTUALLY catches DB errors
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
@@ -17,7 +16,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
 // STEP 2: Fetch Dropdown Data
 // ============================================================
 $prog_result    = mysqli_query($conn, "SELECT * FROM programmes");
-$lect_result    = mysqli_query($conn, "SELECT user_id, full_name FROM users WHERE role = 'Assessor'");
+$lect_result    = mysqli_query($conn, "SELECT user_id, full_name FROM users WHERE role = 'Lecturer' ORDER BY full_name ASC");
+$super_result   = mysqli_query($conn, "SELECT user_id, full_name FROM users WHERE role = 'Supervisor' ORDER BY full_name ASC");
 $company_result = mysqli_query($conn, "SELECT DISTINCT company_name FROM internships WHERE company_name != '' ORDER BY company_name ASC");
 
 // ============================================================
@@ -25,27 +25,26 @@ $company_result = mysqli_query($conn, "SELECT DISTINCT company_name FROM interns
 // ============================================================
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-    // 3a. Read inputs (no manual escaping needed — prepared statements handle it)
     $sid     = strtoupper(trim($_POST['student_id']   ?? ''));
     $sname   = trim($_POST['student_name']  ?? '');
     $pid     = trim($_POST['programme_id']  ?? '');
-    $lid     = trim($_POST['supervisor_id'] ?? '');
     $company = trim($_POST['company_name']  ?? '');
+    
+    // Grab both assigned staff members (or set to NULL if left empty)
+    $lect_id = empty($_POST['lecturer_id']) ? NULL : trim($_POST['lecturer_id']);
+    $super_id = empty($_POST['supervisor_id']) ? NULL : trim($_POST['supervisor_id']);
 
-    if (!$sid || !$sname || !$pid || !$lid || !$company) {
+    // FIX: Removed !$company from this check so it can be left blank (pending) safely
+    if (!$sid || !$sname || !$pid) {
         header("Location: add_student.php?error=missing_fields");
         exit();
     }
 
     $default_pass = password_hash("student123", PASSWORD_DEFAULT);
-
-    // ---- 3b. Photo Upload ----
     $profile_pic = "default.png";
 
     if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] !== UPLOAD_ERR_NO_FILE) {
-
         $upload_error = $_FILES['profile_picture']['error'];
-
         if ($upload_error !== UPLOAD_ERR_OK) {
             $upload_err_map = [
                 UPLOAD_ERR_INI_SIZE   => 'upload_too_large',
@@ -60,59 +59,46 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit();
         }
 
-        // Validate by MIME type (not just extension)
         $allowed_ext = ['jpg', 'jpeg', 'png'];
-$file_ext    = strtolower(pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION));
-
-if (!in_array($file_ext, $allowed_ext)) {
-    header("Location: add_student.php?error=invalid_image_type");
-    exit();
-}
-
-        // Enforce 2 MB limit
+        $file_ext    = strtolower(pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION));
+        if (!in_array($file_ext, $allowed_ext)) {
+            header("Location: add_student.php?error=invalid_image_type");
+            exit();
+        }
         if ($_FILES['profile_picture']['size'] > 2 * 1024 * 1024) {
             header("Location: add_student.php?error=upload_too_large");
             exit();
         }
 
-        // Use __DIR__ so the path is always absolute and correct
+        // FIX: Changed from /images/ to /uploads/ to match your existing directory structure
         $upload_dir = __DIR__ . '/uploads/';
-
         if (!is_dir($upload_dir)) {
             if (!mkdir($upload_dir, 0755, true)) {
                 header("Location: add_student.php?error=upload_dir_failed");
                 exit();
             }
         }
-
         if (!is_writable($upload_dir)) {
             header("Location: add_student.php?error=upload_not_writable");
             exit();
         }
 
         $new_file_name = $sid . '_' . time() . '.' . $file_ext;
-        $dest_path     = $upload_dir . $new_file_name;
-
+        $dest_path     = $upload_dir . $new_file_name; 
         if (!move_uploaded_file($_FILES['profile_picture']['tmp_name'], $dest_path)) {
             header("Location: add_student.php?error=move_failed");
             exit();
         }
-
         $profile_pic = $new_file_name;
     }
 
-    // ---- 3c. Duplicate checks ----
     $check_stmt = mysqli_prepare($conn, "SELECT student_id FROM students WHERE student_id = ?");
     mysqli_stmt_bind_param($check_stmt, "s", $sid);
     mysqli_stmt_execute($check_stmt);
     mysqli_stmt_store_result($check_stmt);
     $is_dup = mysqli_stmt_num_rows($check_stmt) > 0;
     mysqli_stmt_close($check_stmt);
-
-    if ($is_dup) {
-        header("Location: add_student.php?error=duplicate");
-        exit();
-    }
+    if ($is_dup) { header("Location: add_student.php?error=duplicate"); exit(); }
 
     $check_user = mysqli_prepare($conn, "SELECT user_id FROM users WHERE user_id = ?");
     mysqli_stmt_bind_param($check_user, "s", $sid);
@@ -120,28 +106,20 @@ if (!in_array($file_ext, $allowed_ext)) {
     mysqli_stmt_store_result($check_user);
     $user_exists = mysqli_stmt_num_rows($check_user) > 0;
     mysqli_stmt_close($check_user);
+    if ($user_exists) { header("Location: add_student.php?error=duplicate"); exit(); }
 
-    if ($user_exists) {
-        header("Location: add_student.php?error=duplicate");
-        exit();
-    }
-
-    // ---- 3d. Transaction ----
     mysqli_begin_transaction($conn);
     try {
-        // A. users table
         $stmt_u = mysqli_prepare($conn, "INSERT INTO users (user_id, username, password, full_name, role) VALUES (?, ?, ?, ?, 'Student')");
         mysqli_stmt_bind_param($stmt_u, "ssss", $sid, $sid, $default_pass, $sname);
         mysqli_stmt_execute($stmt_u);
         mysqli_stmt_close($stmt_u);
 
-        // B. students table
-        $stmt_s = mysqli_prepare($conn, "INSERT INTO students (student_id, student_name, programme_id, supervisor_id, profile_picture) VALUES (?, ?, ?, ?, ?)");
-        mysqli_stmt_bind_param($stmt_s, "sssss", $sid, $sname, $pid, $lid, $profile_pic);
+        $stmt_s = mysqli_prepare($conn, "INSERT INTO students (student_id, student_name, programme_id, lecturer_id, supervisor_id, profile_picture) VALUES (?, ?, ?, ?, ?, ?)");
+        mysqli_stmt_bind_param($stmt_s, "ssssss", $sid, $sname, $pid, $lect_id, $super_id, $profile_pic);
         mysqli_stmt_execute($stmt_s);
         mysqli_stmt_close($stmt_s);
 
-        // C. internships table
         $int_id = "INT-" . strtoupper(substr($sid, -4)) . "-" . time();
         $stmt_i = mysqli_prepare($conn, "INSERT INTO internships (internship_id, student_id, company_name, internship_status) VALUES (?, ?, ?, 'Pending')");
         mysqli_stmt_bind_param($stmt_i, "sss", $int_id, $sid, $company);
@@ -151,11 +129,9 @@ if (!in_array($file_ext, $allowed_ext)) {
         mysqli_commit($conn);
         header("Location: view_students.php?msg=added&name=" . urlencode($sname));
         exit();
-
     } catch (Throwable $e) {
         mysqli_rollback($conn);
         error_log("add_student ERROR: " . $e->getMessage());
-        // Shows DB detail in URL — remove &detail= line in production
         header("Location: add_student.php?error=create_failed&detail=" . urlencode($e->getMessage()));
         exit();
     }
@@ -165,8 +141,26 @@ include("header.php");
 ?>
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+
+<style>
+.select2-container .select2-selection--single {
+    height: 42px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 40px;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #1f2937;
+    font-size: 0.95rem;
+}
+</style>
 
 <div class="page-header-flex">
     <div>
@@ -176,75 +170,130 @@ include("header.php");
     </div>
 </div>
 
-<?php
-// ---- Error / success banner ----
-if (isset($_GET['error'])) {
+<?php if (isset($_GET['error'])):
     $err_messages = [
         'duplicate'           => 'A student with this ID already exists.',
-        'missing_fields'      => 'All fields are required.',
+        'missing_fields'      => 'All required fields must be filled.',
         'invalid_image_type'  => 'Invalid file. Only JPG and PNG are allowed.',
         'upload_too_large'    => 'Image exceeds the 2 MB limit.',
         'upload_partial'      => 'Upload was interrupted — please try again.',
         'upload_no_tmp'       => 'Server error: no temp folder. Contact your administrator.',
         'upload_cant_write'   => 'Server error: disk write failed. Contact your administrator.',
-        'upload_not_writable' => 'Server error: uploads/ folder is not writable. Run: chmod 755 uploads/',
+        'upload_not_writable' => 'Server error: uploads/ folder is not writable.',
         'upload_dir_failed'   => 'Server error: could not create uploads/ folder.',
         'move_failed'         => 'Could not save the uploaded image. Check folder permissions.',
-        'create_failed'       => 'Database error while creating the record. See detail below.',
+        'create_failed'       => 'Database error while creating the record.',
     ];
-    $msg    = htmlspecialchars($err_messages[$_GET['error']] ?? 'An unexpected error occurred.');
-    $detail = isset($_GET['detail'])
-        ? '<br><small style="opacity:.75">DB detail: ' . htmlspecialchars($_GET['detail']) . '</small>'
-        : '';
-    echo '<div style="background:#fee2e2;border:1px solid #f87171;color:#991b1b;
-                      padding:14px 20px;border-radius:8px;margin-bottom:20px;">
-            <strong>Error:</strong> ' . $msg . $detail . '
-          </div>';
-}
+    $emsg   = htmlspecialchars($err_messages[$_GET['error']] ?? 'An unexpected error occurred.');
+    $detail = isset($_GET['detail']) ? '<br><small>Detail: ' . htmlspecialchars($_GET['detail']) . '</small>' : '';
 ?>
+<div class="error-banner"><strong>Error:</strong> <?= $emsg . $detail ?></div>
+<?php endif; ?>
 
-<div class="stat-card form-card-wide">
-    <p class="stat-card-desc" style="margin-bottom:30px; border-bottom:1px solid var(--border-color); padding-bottom:20px;">
-        Complete this form to generate a system account, academic profile, and pending internship record for the candidate.
-    </p>
+<div class="wizard-shell">
 
-    <form method="POST" autocomplete="off" enctype="multipart/form-data" onsubmit="return validateAndSubmit()">
+    <aside class="wizard-sidebar">
+        <div class="sidebar-card">
+            <p class="sidebar-title">Registration Steps</p>
 
-        <div class="form-grid-2col">
-
-            <!-- Photo upload -->
-            <div class="photo-upload-container">
-                <label class="photo-upload-box" id="drop-zone" for="file-upload">
-                    <img id="image-preview" class="photo-preview" src="#" alt="Preview"
-                         style="display:none; width:100%; height:100%; object-fit:cover; border-radius:8px;">
-                    <div id="upload-placeholder">
-                        <div class="photo-upload-label">Upload Profile Photo</div>
-                        <div class="photo-upload-subtext">JPG or PNG &middot; Max 2 MB</div>
+            <ul class="step-list" id="stepList">
+                <li class="step-item active" data-step="1" onclick="goToStep(1)">
+                    <div class="step-dot">1</div>
+                    <div class="step-meta">
+                        <div class="step-label">Identity</div>
+                        <div class="step-sublabel">ID & full name</div>
                     </div>
-                    <input type="file" name="profile_picture" id="file-upload"
-                           accept="image/png, image/jpeg"
-                           style="display:none;"
-                           onchange="previewImage(event)">
-                </label>
-                <p id="file-error" style="color:#dc2626; font-size:0.8rem; margin-top:6px; display:none;"></p>
+                </li>
+                <li class="step-item" data-step="2" onclick="goToStep(2)">
+                    <div class="step-dot">2</div>
+                    <div class="step-meta">
+                        <div class="step-label">Academic</div>
+                        <div class="step-sublabel">Programme & lecturer</div>
+                    </div>
+                </li>
+                <li class="step-item" data-step="3" onclick="goToStep(3)">
+                    <div class="step-dot">3</div>
+                    <div class="step-meta">
+                        <div class="step-label">Internship</div>
+                        <div class="step-sublabel">Company placement</div>
+                    </div>
+                </li>
+                <li class="step-item" data-step="4" onclick="goToStep(4)">
+                    <div class="step-dot">4</div>
+                    <div class="step-meta">
+                        <div class="step-label">Review</div>
+                        <div class="step-sublabel">Confirm & submit</div>
+                    </div>
+                </li>
+            </ul>
+
+            <div class="progress-wrap">
+                <div class="progress-label">
+                    <span>Progress</span>
+                    <span id="progressPct">25%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="progressBar" style="width:25%"></div>
+                </div>
             </div>
 
-            <!-- Form fields -->
-            <div>
+        </div>
+    </aside>
+
+    <main class="wizard-main">
+        <form method="POST" autocomplete="off" enctype="multipart/form-data" id="wizardForm" onsubmit="return handleSubmit()">
+
+            <div class="form-panel active" id="panel1">
+                <p class="panel-eyebrow">Step 1 of 4</p>
+                <h2 class="panel-title">Student Identity</h2>
+                <p class="panel-desc">Enter the student's ID number, full name, and an optional profile photo.</p>
+
                 <div class="form-group">
-                    <label>Student ID</label>
-                    <input type="text" name="student_id" required placeholder="e.g. 20715097" pattern="[A-Za-z0-9\-]{3,20}">
+                    <label>Profile Photo <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
+                    <div class="photo-zone" id="photoZone" style="width: 300px; height: 250px; margin: 0; display: flex; flex-direction: column; justify-content: center;">
+                    <img id="photoPreview" class="preview" src="#" alt="Preview">
+                    <div id="photoPlaceholder">
+                        <div class="photo-zone-title">Click or drag to upload</div>
+                        <div class="photo-zone-sub">JPG or PNG · Max 2 MB</div>
+                    </div>
+                    <input type="file" name="profile_picture" id="photoInput" accept="image/png,image/jpeg,image/webp" title="">
+                </div>
+                    <p id="photoError" style="color:#dc2626; font-size:0.75rem; margin-top:6px; display:none;"></p>
+                </div>
+
+                <div class="field-row">
+                    <div class="form-group">
+                    <label>Student ID <span class="required-star">*</span></label>
+                    <input type="text" name="student_id" id="f_sid" required placeholder="e.g. 20715097" pattern="[0-9]{3,20}" inputmode="numeric">
+                </div>
+                    <div class="form-group">
+                        <label>Full Name <span class="required-star">*</span></label>
+                        <input type="text" name="student_name" id="f_sname" required placeholder="e.g. Phoon Le-Ee">
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Full Student Name</label>
-                    <input type="text" name="student_name" required placeholder="e.g. Phoon Le-Ee">
+                    <label>Default Password</label>
+                    <input type="text" value="student123" disabled style="background:#f9fafb; color: var(--text-muted);">
+                    <span class="auto-badge">✓ Auto-assigned · Student can change after login</span>
                 </div>
 
+                <div class="panel-nav">
+                    <span></span>
+                    <button type="button" class="btn-next" onclick="nextStep(1)">
+                        Next: Academic Info <span>→</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-panel" id="panel2">
+                <p class="panel-eyebrow">Step 2 of 4</p>
+                <h2 class="panel-title">Academic Details</h2>
+
                 <div class="form-group">
-                    <label>Academic Programme</label>
-                    <select name="programme_id" class="form-control search-select" required>
-                        <option value="">-- Select Programme --</option>
+                    <label>Academic Programme <span class="required-star">*</span></label>
+                    <select name="programme_id" id="f_prog" class="search-select" required>
+                        <option value="" disabled selected>— Select Programme —</option>
                         <?php mysqli_data_seek($prog_result, 0); while ($row = mysqli_fetch_assoc($prog_result)): ?>
                             <option value="<?= htmlspecialchars($row['programme_id']) ?>">
                                 <?= htmlspecialchars($row['programme_name']) ?>
@@ -253,85 +302,151 @@ if (isset($_GET['error'])) {
                     </select>
                 </div>
 
-                <div class="form-group">
-                    <label>Assign Assessor</label>
-                    <select name="supervisor_id" class="form-control search-select" required>
-                        <option value="">-- Select Lecturer --</option>
-                        <?php mysqli_data_seek($lect_result, 0); while ($row = mysqli_fetch_assoc($lect_result)): ?>
-                            <option value="<?= htmlspecialchars($row['user_id']) ?>">
-                                <?= htmlspecialchars($row['full_name']) ?>
-                            </option>
-                        <?php endwhile; ?>
-                    </select>
+                <div class="field-row">
+                    <div class="form-group">
+                        <label>Assigned Lecturer <span class="required-star">*</span></label>
+                        <select name="lecturer_id" id="f_lect" class="search-select" required>
+                            <option value="" disabled selected>— Select Lecturer —</option>
+                            <?php mysqli_data_seek($lect_result, 0); while ($row = mysqli_fetch_assoc($lect_result)): ?>
+                                <option value="<?= htmlspecialchars($row['user_id']) ?>">
+                                    <?= htmlspecialchars($row['full_name']) ?>
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
+                        <p class="field-hint">Evaluates this student's internship.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Assigned Supervisor <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
+                        <select name="supervisor_id" id="f_super" class="search-select">
+                            <option value="" selected>— Pending Supervisor —</option>
+                            
+                            <?php mysqli_data_seek($super_result, 0); while ($row = mysqli_fetch_assoc($super_result)): ?>
+                                <option value="<?= htmlspecialchars($row['user_id']) ?>">
+                                    <?= htmlspecialchars($row['full_name']) ?>
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
+                        <p class="field-hint">Can be assigned later if pending.</p>
+                    </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom:30px;">
-                    <label>Internship Company</label>
-                    <select name="company_name" class="form-control search-select" required>
-                        <option value="">-- Select Company --</option>
-                        <?php mysqli_data_seek($company_result, 0); while ($row = mysqli_fetch_assoc($company_result)): ?>
+                <div class="panel-nav">
+                    <button type="button" class="btn-back" onclick="prevStep(2)">← Back</button>
+                    <button type="button" class="btn-next" onclick="nextStep(2)">
+                        Next: Internship <span>→</span>
+                    </button>
+                </div>
+            </div>
+
+           <div class="form-panel" id="panel3">
+                <p class="panel-eyebrow">Step 3 of 4</p>
+                <h2 class="panel-title">Internship Placement</h2>
+                <p class="panel-desc">Select the company where the student is completing their internship.</p>
+
+                <div class="form-group">
+                    <label>Internship Company <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
+                    <select name="company_name" id="f_company" class="search-select">
+                        <option value="" selected>— Pending Placement —</option>
+                        <?php 
+                        if(isset($company_result)) {
+                            mysqli_data_seek($company_result, 0); 
+                            while ($row = mysqli_fetch_assoc($company_result)): 
+                        ?>
                             <option value="<?= htmlspecialchars($row['company_name']) ?>">
                                 <?= htmlspecialchars($row['company_name']) ?>
                             </option>
-                        <?php endwhile; ?>
+                        <?php 
+                            endwhile; 
+                        } 
+                        ?>
                     </select>
+                    <p class="field-hint">Leave as pending if the student hasn't secured a placement yet.</p>
                 </div>
 
-                <button type="submit" id="submitBtn" class="btn-primary"
-                        style="width:100%; padding:14px; font-size:0.95rem;">
-                    Create Student Record &amp; Account
-                </button>
+                <div class="panel-nav">
+                    <button type="button" class="btn-back" onclick="prevStep(3)">← Back</button>
+                    <button type="button" class="btn-next" onclick="nextStep(3)">
+                        Review Record <span>→</span>
+                    </button>
+                </div>
             </div>
 
-        </div>
-    </form>
+            <div class="form-panel" id="panel4">
+                <p class="panel-eyebrow">Step 4 of 4</p>
+                <h2 class="panel-title">Review & Confirm</h2>
+                <p class="panel-desc">Double-check all details before creating the student record. Three database entries will be created simultaneously.</p>
+
+                <div class="review-photo-row">
+                <img id="reviewPhoto" class="review-avatar" src="#" alt="">
+                <img id="reviewAvatarPlaceholder" class="review-avatar" src="uploads/default.png" alt="Default Profile">
+                <div>
+                    <div class="review-name" id="rev_name">—</div>
+                    <div class="review-sub" id="rev_id">—</div>
+                </div>
+            </div>
+
+                <div class="review-grid">
+                    <div class="review-item">
+                        <div class="review-label">Student ID</div>
+                        <div class="review-val" id="rev_sid">—</div>
+                    </div>
+                    <div class="review-item">
+                        <div class="review-label">Login Username</div>
+                        <div class="review-val" id="rev_user">—</div>
+                    </div>
+                    <div class="review-item">
+                        <div class="review-label">Programme</div>
+                        <div class="review-val" id="rev_prog">—</div>
+                    </div>
+                    <div class="review-item">
+                        <div class="review-label">Lecturer</div>
+                        <div class="review-val" id="rev_lect">—</div>
+                    </div>
+                    <div class="review-item">
+                        <div class="review-label">Supervisor</div>
+                        <div class="review-val" id="rev_super">—</div>
+                    </div>
+                    <div class="review-item">
+                        <div class="review-label">Company</div>
+                        <div class="review-val" id="rev_company">—</div>
+                    </div>
+                    <div class="review-item">
+                        <div class="review-label">Internship Status</div>
+                        <div class="review-val pending">Pending</div>
+                    </div>
+                    <div class="review-item">
+                        <div class="review-label">Default Password</div>
+                        <div class="review-val">student123</div>
+                    </div>
+                </div>
+
+                <div class="panel-nav">
+                    <button type="button" class="btn-back" onclick="prevStep(4)">← Edit Details</button>
+                    <button type="submit" class="btn-next" id="submitBtn">
+                        ✓ Create Student Record
+                    </button>
+                </div>
+            </div>
+
+        </form>
+    </main>
 </div>
 
-<script>
-function previewImage(event) {
-    const file    = event.target.files[0];
-    const errEl   = document.getElementById('file-error');
-    const preview = document.getElementById('image-preview');
-    const holder  = document.getElementById('upload-placeholder');
+<div id="cropModal" class="crop-modal">
+    <div class="crop-modal-content">
+        <h3 style="margin-top:0; margin-bottom:15px; color:var(--primary-dark);">Adjust Profile Photo</h3>
+        <div class="crop-container">
+            <img id="imageToCrop" src="" style="max-width: 100%; display: block;">
+        </div>
+        <div class="crop-actions">
+            <button type="button" class="btn-cancel" onclick="closeCropModal()">Cancel</button>
+            <button type="button" class="btn-save" id="btnCropConfirm">Confirm & Save</button>
+        </div>
+    </div>
+</div>
 
-    errEl.style.display = 'none';
-    errEl.textContent   = '';
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script src="script.js?v=<?php echo time(); ?>"></script>
 
-    if (!file) return;
-
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-        errEl.textContent   = 'Only JPG or PNG files are accepted.';
-        errEl.style.display = 'block';
-        event.target.value  = '';
-        return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-        errEl.textContent   = 'Image must be under 2 MB.';
-        errEl.style.display = 'block';
-        event.target.value  = '';
-        return;
-    }
-
-    const reader  = new FileReader();
-    reader.onload = e => {
-        preview.src           = e.target.result;
-        preview.style.display = 'block';
-        holder.style.display  = 'none';
-    };
-    reader.readAsDataURL(file);
-}
-
-function validateAndSubmit() {
-    const btn = document.getElementById('submitBtn');
-    btn.disabled    = true;
-    btn.textContent = 'Creating… please wait';
-    return true;
-}
-
-$(document).ready(function () {
-    $('.search-select').select2({ width: '100%' });
-});
-</script>
-
-<script src="script.js"></script>
 <?php include("footer.php"); ?>

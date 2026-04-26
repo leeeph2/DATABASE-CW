@@ -1,9 +1,9 @@
 <?php
-// 1. Start Session & Security
+// 1. Start Session & Database Connection
 session_start();
 require("database.php");
 
-// Security Check: Only Admins can manage staff
+// 2. Security Check: Only Admins
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
     header("Location: index.php?error=unauthorized");
     exit();
@@ -11,189 +11,225 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
 
 $message = "";
 
-// 2. SEARCH LOGIC
-$search_query = "";
-if (isset($_GET['search_staff'])) {
-    $search_query = mysqli_real_escape_string($conn, $_GET['search_staff']);
-}
-
 // 3. DELETE FUNCTIONALITY
 if (isset($_GET['delete'])) {
     $target_id = mysqli_real_escape_string($conn, $_GET['delete']);
-    
+
     // Safety check: Don't let the Admin delete themselves
     if ($target_id === $_SESSION['user_id']) {
         $message = "<div class='error-notification' style='padding: 14px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 8px; text-align: center; margin-bottom: 20px;'>You cannot delete your own admin account!</div>";
     } else {
-        // Fetch the name BEFORE deleting
-        $name_query = mysqli_query($conn, "SELECT full_name FROM users WHERE user_id = '$target_id'");
-        $user_data = mysqli_fetch_assoc($name_query);
+      // Fetch the name AND role BEFORE deleting
+        $name_query = mysqli_query($conn, "SELECT full_name, role FROM users WHERE user_id = '$target_id'");
+        $user_data  = mysqli_fetch_assoc($name_query);
         $deleted_name = $user_data['full_name'] ?? "Assessor";
+        $deleted_role = $user_data['role'] ?? "Staff member";
 
-        // Unassign any students tied to this Assessor first
-        // If a staff member is deleted, set their ID to NULL in the internships they are managing
-        mysqli_query($conn, "UPDATE internships SET lecturer_id = NULL WHERE lecturer_id = '$target_id'");
-        mysqli_query($conn, "UPDATE internships SET supervisor_id = NULL WHERE supervisor_id = '$target_id'");
-
-        // Safe delete
-        if (mysqli_query($conn, "DELETE FROM users WHERE user_id = '$target_id'")) {
-            $encoded_name = urlencode($deleted_name);
-            header("Location: manage_assessors.php?msg=removed&name=$encoded_name");
-            exit();
-        } else {
-            $message = "<div class='error-notification' style='padding: 14px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 8px; text-align: center; margin-bottom: 20px;'>Database error: Could not delete user.</div>";
+        try {
+            if (mysqli_query($conn, "DELETE FROM users WHERE user_id = '$target_id'")) {
+                $encoded_name = urlencode($deleted_name);
+                header("Location: manage_assessors.php?msg=removed&name=$encoded_name");
+                exit();
+            }
+        } catch (mysqli_sql_exception $e) {
+            // Error code 1451 specifically means a Foreign Key constraint failed
+            if ($e->getCode() == 1451) {
+                $safe_name = htmlspecialchars($deleted_name);
+                $message = "<div class='error-notification' style='padding: 14px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 8px; text-align: center; margin-bottom: 20px;'>
+                                <strong>Cannot Delete:</strong> $deleted_role <strong>$safe_name</strong> has already submitted student assessments. Deleting them would corrupt existing academic records.
+                            </div>";
+            } else {
+                // Catch any other weird database errors
+                $message = "<div class='error-notification' style='padding: 14px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 8px; text-align: center; margin-bottom: 20px;'>
+                                Database error: " . htmlspecialchars($e->getMessage()) . "
+                            </div>";
+            }
         }
     }
 }
 
-// 4. ADD ASSESSOR FUNCTIONALITY
-if (isset($_POST['add_assessor'])) {
-    // Sanitize inputs
-    $uid = strtoupper(trim(mysqli_real_escape_string($conn, $_POST['user_id'])));
-    $user = mysqli_real_escape_string($conn, $_POST['username']);
-    $name = mysqli_real_escape_string($conn, $_POST['full_name']);
-    $role = mysqli_real_escape_string($conn, $_POST['role']); // Capture Lecturer or Supervisor
-    $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
+// 4. Search & Filter Logic
+$search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : "";
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'name_asc';
 
-    // Validate if the role is allowed by your ENUM
-    $allowed_roles = ['Lecturer', 'Supervisor'];
-    
-    // Check if ID or Username already exists
-    $check = mysqli_query($conn, "SELECT * FROM users WHERE user_id = '$uid' OR username = '$user'");
-    
-    if (!in_array($role, $allowed_roles)) {
-        $message = "<div class='error-notification' style='padding: 14px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 8px; text-align: center; margin-bottom: 20px;'>Error: Invalid role selected.</div>";
-    } elseif (mysqli_num_rows($check) > 0) {
-        $message = "<div class='error-notification' style='padding: 14px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 8px; text-align: center; margin-bottom: 20px;'>Error: User ID or Username already exists!</div>";
-    } else {
-        // Updated INSERT query to use the dynamic $role variable
-        $insert_sql = "INSERT INTO users (user_id, username, password, full_name, role) 
-                       VALUES ('$uid', '$user', '$pass', '$name', '$role')";
-        
-        if (mysqli_query($conn, $insert_sql)) {
-            $encoded_name = urlencode($name);
-            header("Location: manage_assessors.php?msg=registered&name=$encoded_name");
-            exit();
-        } else {
-            $message = "<div class='error-notification' style='padding: 14px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 8px; text-align: center; margin-bottom: 20px;'>Database Error: Could not add user.</div>";
-        }
-    }
-}
+// Build the base WHERE clause
+$where_clause = " WHERE (full_name LIKE '%$search%' OR user_id LIKE '%$search%' OR username LIKE '%$search%') AND role IN ('Admin', 'Lecturer', 'Supervisor')";
 
-// Include Global Header
-include("header.php"); 
+// Sort order
+$order_clause = match($sort) {
+    'name_desc' => "full_name DESC",
+    'id_asc'    => "user_id ASC",
+    'id_desc'   => "user_id DESC",
+    'role'      => "role ASC, full_name ASC",
+    default     => "full_name ASC",
+};
+
+// 5. PAGINATION LOGIC
+$limit = 10;
+$page = isset($_GET['page']) && is_numeric($_GET['page']) && $_GET['page'] > 0 ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
+
+$count_query = "SELECT COUNT(*) AS total FROM users" . $where_clause;
+$count_result = mysqli_query($conn, $count_query);
+$total_rows = mysqli_fetch_assoc($count_result)['total'];
+$total_pages = ceil($total_rows / $limit);
+
+// Main Query with Limits
+$sql = "SELECT * FROM users " . $where_clause . " ORDER BY $order_clause LIMIT $limit OFFSET $offset";
+$res = mysqli_query($conn, $sql);
+
+// Build query string for pagination links
+$query_string = http_build_query(['search' => $search, 'sort' => $sort]);
+
+// 6. Load the Global Academic Header
+include("header.php");
 ?>
 
-<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--border); padding-bottom: 20px; margin-bottom: 40px;">
+<div class="page-header-flex">
     <div>
         <span class="stat-label">Faculty Management</span>
-        <h1 style="font-size: 2rem; font-weight: 800; color: var(--primary-dark); margin: 5px 0 15px 0;">Assessor Records</h1>
+        <h1 class="page-title-main">Staff Records</h1>
         <a href="admin_dashboard.php" class="back-link">
-            ← Back to Dashboard
+            &larr; Back to Dashboard
         </a>
     </div>
+    <a href="add_staff.php" class="btn-primary">+ Register New Staff</a>
 </div>
 
-<div class="stat-card" style="margin-bottom: 40px; min-height: auto;">
-    <h2 style="font-size: 1.25rem; color: var(--primary-dark); margin-bottom: 20px;">Register New Faculty Staff</h2>
-    <form method="POST" action="manage_assessors.php">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px;">
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Staff ID</label>
-                <input type="text" name="user_id" placeholder="e.g. LEC-005" required>
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Username</label>
-                <input type="text" name="username" placeholder="e.g. janesmith" required>
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Full Name</label>
-                <input type="text" name="full_name" placeholder="e.g. Dr. Jane Smith" required>
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Staff Role</label>
-                <select name="role" required style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: white;">
-                    <option value="" disabled selected>Select Role</option>
-                    <option value="Lecturer">Lecturer</option>
-                    <option value="Supervisor">Supervisor</option>
-                </select>
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Password</label>
-                <input type="password" name="password" placeholder="••••••••" required>
+<?php if (isset($_GET['msg'])): ?>
+    <?php if ($_GET['msg'] === 'registered'): ?>
+        <div class="edit-notice success" style="margin-bottom: 30px;">
+            <span class="notice-icon">✓</span>
+            <div>
+                New staff member <strong><?php echo htmlspecialchars(urldecode($_GET['name'] ?? '')); ?></strong> registered successfully.
             </div>
         </div>
-        <button type="submit" name="add_assessor" class="btn-primary" style="margin-top: 25px;">Add Staff to Database</button>
+    <?php elseif ($_GET['msg'] === 'removed'): ?>
+        <div class="edit-notice success" style="margin-bottom: 30px;">
+            <span class="notice-icon">✓</span>
+            <div>
+                Record for <strong><?php echo htmlspecialchars(urldecode($_GET['name'] ?? 'the staff member')); ?></strong> has been successfully deleted.
+            </div>
+        </div>
+    <?php endif; ?>
+<?php endif; ?>
+
+<?php if ($message): ?>
+    <div style="margin-bottom: 30px;">
+        <?php echo $message; ?>
+    </div>
+<?php endif; ?>
+
+<div class="stat-card filter-form-card">
+    <form method="GET" action="manage_assessors.php" class="filter-form filter-form-compact">
+
+        <div class="filter-form-group">
+            <input type="text" name="search" placeholder="Search by ID, fullname or username..."
+                   class="filter-input" value="<?php echo htmlspecialchars($search); ?>">
+        </div>
+
+        <div class="filter-select-group">
+            <select name="sort" class="filter-select">
+                <option value="name_asc"  <?php echo ($sort === 'name_asc')  ? 'selected' : ''; ?>>Name (A → Z)</option>
+                <option value="name_desc" <?php echo ($sort === 'name_desc') ? 'selected' : ''; ?>>Name (Z → A)</option>
+                <option value="id_asc"   <?php echo ($sort === 'id_asc')    ? 'selected' : ''; ?>>Staff ID (Asc)</option>
+                <option value="id_desc"  <?php echo ($sort === 'id_desc')   ? 'selected' : ''; ?>>Staff ID (Desc)</option>
+                <option value="role"     <?php echo ($sort === 'role')      ? 'selected' : ''; ?>>Role (Admin / Lecturer / Supervisor)</option>
+            </select>
+        </div>
+
+        <div class="filter-actions">
+            <button type="submit" class="btn-primary btn-filter">Search Staff</button>
+            <?php if ($search !== "" || $sort !== 'name_asc'): ?>
+                <a href="manage_assessors.php" class="clear-link">Clear All</a>
+            <?php endif; ?>
+        </div>
+
     </form>
 </div>
 
-<div class="stat-card" style="padding: 0; overflow: hidden; min-height: auto;">
-    
-    <div style="padding: 24px; border-bottom: 2px solid var(--border); background-color: #f8fafc;">
-        <form method="GET" action="manage_assessors.php" style="display: flex; gap: 15px; align-items: center;">
-            <input type="text" name="search_staff" placeholder="Search by name, ID, or username..." value="<?php echo htmlspecialchars($search_query); ?>" 
-                   style="flex-grow: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit;">
-            <button type="submit" class="btn-primary">Search Staff</button>
-            <?php if($search_query != ""): ?>
-                <a href="manage_assessors.php" style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-decoration: none;">Clear</a>
-            <?php endif; ?>
-        </form>
-    </div>
-
-    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+<div class="stat-card table-card">
+    <table class="data-table">
         <thead>
-            <tr style="border-bottom: 2px solid var(--border);">
-                <th style="padding: 16px 24px; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Staff ID</th>
-                <th style="padding: 16px 24px; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Full Name</th>
-                <th style="padding: 16px 24px; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Username</th>
-                <th style="padding: 16px 24px; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Role</th>
-                <th style="padding: 16px 24px; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Actions</th>
+            <tr class="table-head-row">
+                <th class="table-th">Staff ID</th>
+                <th class="table-th">Full Name</th>
+                <th class="table-th">Username</th>
+                <th class="table-th">Role</th>
+                <th class="table-th">Actions</th>
             </tr>
         </thead>
         <tbody>
-            <?php
-            $sql = "SELECT * FROM users WHERE (full_name LIKE '%$search_query%' OR user_id LIKE '%$search_query%' OR username LIKE '%$search_query%') AND role IN ('Admin', 'Lecturer', 'Supervisor') 
-        ORDER BY role ASC, full_name ASC";
-            $res = mysqli_query($conn, $sql);
-            
-            if (mysqli_num_rows($res) > 0) {
-                while ($row = mysqli_fetch_assoc($res)) {
-                    echo "<tr style='border-bottom: 1px solid var(--border); transition: background-color 0.2s;'>";
-                    echo "<td style='padding: 16px 24px; font-weight: 700; color: var(--primary-dark);'>" . htmlspecialchars($row['user_id']) . "</td>";
-                    echo "<td style='padding: 16px 24px; font-weight: 600;'>" . htmlspecialchars($row['full_name']) . "</td>";
-                    echo "<td style='padding: 16px 24px; color: var(--text-muted); font-size: 0.9rem;'>" . htmlspecialchars($row['username']) . "</td>";
-                    
-                    // Highlight Admin role slightly
-                    if ($row['role'] === 'Admin') {
-                        echo "<td style='padding: 16px 24px;'><span style='background: #e0e7ff; color: #3730a3; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 700;'>" . $row['role'] . "</span></td>";
-                    } else {
-                        echo "<td style='padding: 16px 24px; color: var(--text-muted); font-size: 0.9rem;'>" . $row['role'] . "</td>";
-                    }
-                    
-                    echo "<td style='padding: 16px 24px;'>";
-                    
-                    // Edit Button (If you have an edit_assessor.php file)
-                    // echo "<a href='edit_assessor.php?id=" . urlencode($row['user_id']) . "' style='color: var(--primary); font-weight: 700; font-size: 0.85rem; text-decoration: none; margin-right: 15px;'>EDIT</a>";
-
-                    // Delete Button
-                    if ($row['user_id'] !== $_SESSION['user_id']) {
-                        echo "<a href='manage_assessors.php?delete=" . urlencode($row['user_id']) . "' onclick='return confirm(\"Are you sure you want to delete this user? This will unassign them from all current students.\")' style='color: var(--status-red); font-weight: 700; font-size: 0.85rem; text-decoration: none;'>DELETE</a>";
-                    } else {
-                        echo "<span style='color: var(--text-muted); font-size: 0.85rem; font-weight: 700;'>ACTIVE (YOU)</span>";
-                    }
-                    
-                    echo "</td>";
-                    echo "</tr>";
-                }
-            } else {
-                echo "<tr><td colspan='5' style='padding: 40px; text-align: center; color: var(--text-muted); font-weight: 600;'>No staff members found matching your criteria.</td></tr>";
-            }
-            ?>
+            <?php if (mysqli_num_rows($res) > 0): ?>
+                <?php while ($row = mysqli_fetch_assoc($res)): ?>
+                <tr class="table-row">
+                    <td class="table-td td-bold-dark"><?php echo htmlspecialchars($row['user_id']); ?></td>
+                    <td class="table-td td-bold"><?php echo htmlspecialchars($row['full_name']); ?></td>
+                    <td class="table-td"><?php echo htmlspecialchars($row['username']); ?></td>
+                    <td class="table-td">
+                        <?php if ($row['role'] === 'Admin'): ?>
+                            <span style= padding: 4px 10px; border-radius: 4px; font-size: 0.95rem; font-weight: 700;">
+                                Admin
+                            </span>
+                        <?php elseif ($row['role'] === 'Lecturer'): ?>
+                            <span style=padding: 4px 10px; border-radius: 4px; font-size: 0.95rem; font-weight: 700;">
+                                Lecturer
+                            </span>
+                        <?php elseif ($row['role'] === 'Supervisor'): ?>
+                            <span style=padding: 4px 10px; border-radius: 4px; font-size: 0.95rem; font-weight: 700;">
+                                Supervisor
+                            </span>
+                        <?php else: ?>
+                            <?php echo htmlspecialchars($row['role']); ?>
+                        <?php endif; ?>
+                    </td>
+                    <td class="table-td">
+                        <?php if ($row['user_id'] !== $_SESSION['user_id']): ?>
+                            <a href="edit_staff.php?id=<?php echo urlencode($row['user_id']); ?>" class="action-link action-edit">EDIT</a>
+                            
+                            <a href="manage_assessors.php?delete=<?php echo urlencode($row['user_id']); ?>"
+                               class="action-link action-delete"
+                               onclick="return confirm('Are you sure you want to delete the account for <?php echo htmlspecialchars(addslashes($row['full_name'])); ?>? This will unassign them from all current students.');">
+                               DELETE
+                            </a>
+                        <?php else: ?>
+                            <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700;">ACTIVE (YOU)</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <tr>
+                    <td colspan="5" class="empty-state-td">No staff members found matching your criteria.</td>
+                </tr>
+            <?php endif; ?>
         </tbody>
     </table>
+
+    <?php if ($total_pages > 1): ?>
+    <div class="pagination-container">
+        <span class="pagination-info">Showing Page <?php echo $page; ?> of <?php echo $total_pages; ?> (<?php echo $total_rows; ?> Total Records)</span>
+
+        <div class="pagination-controls">
+            <a href="?<?php echo $query_string; ?>&page=<?php echo $page - 1; ?>"
+               class="page-btn <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+               Previous
+            </a>
+
+            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                <a href="?<?php echo $query_string; ?>&page=<?php echo $i; ?>"
+                   class="page-btn <?php echo ($i == $page) ? 'active' : ''; ?>">
+                   <?php echo $i; ?>
+                </a>
+            <?php endfor; ?>
+
+            <a href="?<?php echo $query_string; ?>&page=<?php echo $page + 1; ?>"
+               class="page-btn <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+               Next
+            </a>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
 
-<?php 
-// Include Global Footer
-include("footer.php"); 
-?>
+<?php include("footer.php"); ?>

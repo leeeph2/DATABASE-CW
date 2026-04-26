@@ -11,7 +11,6 @@
     <div class="login-card">
 
         <div class="login-header">
-            <div style="font-size: 40px;">🔑</div>
             <h1>Forgot Password?</h1>
             <p class="stat-label" style="text-transform: none; font-weight: 400; font-size: 14px; line-height: 1.6; margin-top: 8px; letter-spacing: 0;">
                 Enter your username below. Your department admin will reset your password to the default <strong>(pass123)</strong> within 24 hours.

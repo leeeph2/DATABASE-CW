@@ -74,13 +74,13 @@ include("header.php");
     </div>
 
     <div class="stat-card filter-form-card" style="padding: 20px; margin-bottom: 25px;">
-        <form method="GET" action="view_my_students.php" class="filter-form" style="display: flex; gap: 12px; align-items: center;">
+        <form method="GET" action="lecturer_view_my_students.php" class="filter-form" style="display: flex; gap: 12px; align-items: center;">
             <div style="flex: 2;">
                 <input type="text" name="search" class="filter-input" placeholder="Search Student ID or Name..." value="<?php echo htmlspecialchars($search); ?>" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
             </div>
             <div style="flex: 1;">
                 <select name="status" class="filter-input" style="width: 100%; height: 42px; border-radius: 8px; border: 1px solid var(--border-color); padding: 0 10px; background: white;">
-                    <option value="">All Statuses</option>
+                    <option value="">All Status</option>
                     <option value="done" <?php echo ($filter_status == 'done') ? 'selected' : ''; ?>>Complete</option>
                     <option value="pending" <?php echo ($filter_status == 'pending') ? 'selected' : ''; ?>>Pending (1/2)</option>
                     <option value="not_started" <?php echo ($filter_status == 'not_started') ? 'selected' : ''; ?>>Not Started</option>
@@ -88,7 +88,7 @@ include("header.php");
             </div>
             <button type="submit" class="btn-primary" style="white-space: nowrap; padding: 10px 25px; border-radius: 8px;">Search</button>
             <?php if($search !== "" || $filter_status !== ""): ?>
-                <a href="view_my_students.php" style="color: var(--status-red); text-decoration: none; font-size: 0.85rem; font-weight: 700; margin-left: 10px;">Reset</a>
+                <a href="lecturer_view_my_students.php" style="color: var(--status-red); text-decoration: none; font-size: 0.85rem; font-weight: 700; margin-left: 10px;">Reset</a>
             <?php endif; ?>
         </form>
     </div>

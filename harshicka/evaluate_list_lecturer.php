@@ -74,6 +74,45 @@ $query_string = http_build_query($query_params);
 include("header.php");
 ?>
 
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+/* Clean up the Select2 styling to match your dashboard filter bar */
+.filter-form-compact .select2-container { flex: 1; min-width: 150px; }
+.select2-container .select2-selection--single { height: 42px; border: 1px solid #d1d5db; border-radius: 8px; display: flex; align-items: center; }
+.select2-container--default .select2-selection--single .select2-selection__arrow { height: 40px; }
+.select2-container--default .select2-selection--single .select2-selection__rendered { color: #1f2937; font-size: 0.95rem; }
+
+/* Clean Status Text Styles (No solid boxes, just soft hover) */
+.status-clean {
+    font-weight: 800;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+    display: inline-block;
+    cursor: default;
+}
+.status-eval { color: #16a34a; }
+.status-eval:hover { background: #dcfce7; }
+
+.status-pend { color: #ea580c; }
+.status-pend:hover { background: #ffedd5; }
+
+/* Custom Action Link for RE-EVALUATE (Slate Grey colour) */
+.action-reevaluate { 
+    color: #64748b; 
+}
+.action-reevaluate:hover { 
+    background: #f1f5f9; 
+    color: #0f172a; 
+    text-decoration: none; 
+}
+</style>
+
 <div class="dashboard-container">
     <div class="page-header-flex">
         <div>
@@ -89,23 +128,23 @@ include("header.php");
                 <input type="text" name="search" class="filter-input" placeholder="Search by Student ID or Name..." value="<?php echo htmlspecialchars($search); ?>">
             </div>
 
-            <div class="filter-select-group">
-                <select name="status_filter" class="filter-select">
-                    <option value="">All Statuses</option>
+            <div class="filter-select-group" style="flex: 1;">
+                <select name="status_filter" class="search-select">
+                    <option value="">All Status</option>
                     <option value="pending" <?php echo ($status_filter == 'pending') ? 'selected' : ''; ?>>Pending Evaluation</option>
                     <option value="done" <?php echo ($status_filter == 'done') ? 'selected' : ''; ?>>Evaluated</option>
                 </select>
             </div>
 
-            <div class="filter-select-group">
-                <select name="company_filter" class="filter-select">
+            <div class="filter-select-group" style="flex: 1;">
+                <select name="company_filter" class="search-select">
                     <option value="">All Companies</option>
                     <option value="pending" <?php echo ($company_filter == 'pending') ? 'selected' : ''; ?>>Pending Placement</option>
-                    </select>
+                </select>
             </div>
 
-            <div class="filter-select-group">
-                <select name="sort" class="filter-select">
+            <div class="filter-select-group" style="flex: 1;">
+                <select name="sort" class="search-select">
                     <option value="name_asc" <?php echo ($sort == 'name_asc') ? 'selected' : ''; ?>>Name (A → Z)</option>
                     <option value="name_desc" <?php echo ($sort == 'name_desc') ? 'selected' : ''; ?>>Name (Z → A)</option>
                     <option value="id_asc" <?php echo ($sort == 'id_asc') ? 'selected' : ''; ?>>Student ID (Asc)</option>
@@ -137,18 +176,23 @@ include("header.php");
                         <td class="table-td td-bold-dark"><?php echo htmlspecialchars($row['student_id']); ?></td>
                         <td class="table-td td-bold"><?php echo htmlspecialchars($row['student_name']); ?></td>
                         <td class="table-td"><?php echo htmlspecialchars($row['company_name'] ?? 'Pending Placement'); ?></td>
+                        
                         <td class="table-td">
                             <?php if ($row['is_done']): ?>
-                                <span class="badge-status" style="background: #dcfce7; color: #166534; padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; border: 1px solid #bbf7d0;">EVALUATED</span>
+                                <span class="status-clean status-eval">EVALUATED</span>
                             <?php else: ?>
-                                <span class="badge-status" style="background: #ffedd5; color: #9a3412; padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; border: 1px solid #fed7aa;">PENDING</span>
+                                <span class="status-clean status-pend">PENDING</span>
                             <?php endif; ?>
                         </td>
+                        
                         <td class="table-td">
                             <?php if ($row['company_name'] && $row['company_name'] !== 'Pending Placement'): ?>
-                                <a href="evaluate_lecturer.php?id=<?php echo urlencode($row['student_id']); ?>" class="action-link <?php echo $row['is_done'] ? 'action-edit' : 'action-primary'; ?>">
+                                
+                                <a href="evaluate_lecturer.php?id=<?php echo urlencode($row['student_id']); ?>" 
+                                   class="action-link <?php echo $row['is_done'] ? 'action-reevaluate' : 'action-edit'; ?>">
                                     <?php echo $row['is_done'] ? 'RE-EVALUATE' : 'EVALUATE'; ?>
                                 </a>
+
                             <?php else: ?>
                                 <span style="color:#9ca3af; font-size:0.85rem; font-style:italic;">Not Yet Placed</span>
                             <?php endif; ?>

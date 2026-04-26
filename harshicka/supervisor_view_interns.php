@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id']) || trim($_SESSION['role']) !== 'Supervisor') {
 }
 $supervisor_id = $_SESSION['user_id'];
 
-// 3. Search & Filter Logic (Mirrored exactly from lecturer_view_my_students.php)
+// 3. Search & Filter Logic (Mirrored exactly from lecturer_.php)
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : "";
 $filter_status = $_GET['status'] ?? "";
 

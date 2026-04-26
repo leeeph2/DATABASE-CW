@@ -12,7 +12,6 @@ $lecturer_id = $_SESSION['user_id'];
 $lecturer_name = $_SESSION['username'];
 $role = $_SESSION['role'];
 
-// Determine which dashboard to go back to
 $back_url = ($role === 'Admin') ? "admin_dashboard.php" : "assessor_dashboard.php";
 
 // Include Global Header
@@ -85,34 +84,39 @@ include("header.php");
     </table>
 
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; padding-top: 20px;">
+    
+    <div class="sig-box">
+        <img id="saved-signature" src="" style="display:none; max-height: 120px; margin: 0 auto 5px auto;">
         
-        <div class="sig-box">
-            <img id="saved-signature" src="" style="display:none; max-height: 120px; margin: 0 auto 5px auto;">
-            
-            <div id="signature-board-wrapper" class="no-print">
-                <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Draw signature below:</p>
-                <canvas id="signature-pad" style="width: 90%; height: 200px; border: 1px dashed var(--border-color); border-radius: 8px; background: #f8fafc; cursor: crosshair;"></canvas>
-                <div style="margin-top: 15px; margin-bottom: 20px; display: flex; gap: 10px; justify-content: center;">
-                    <button type="button" onclick="clearSig()" style="padding: 8px 15px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; background:white; font-weight: 600;">Clear</button>
-                    <button type="button" onclick="saveSig()" class="btn-primary" style="padding: 8px 15px; font-size: 12px; cursor: pointer; width: auto;">Confirm Signature</button>
-                </div>
+        <div id="signature-board-wrapper" class="no-print">
+            <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Draw signature below:</p>
+            <canvas id="signature-pad" style="width: 90%; height: 200px; border: 1px dashed var(--border-color); border-radius: 8px; background: #f8fafc; cursor: crosshair;"></canvas>
+            <div style="margin-top: 15px; margin-bottom: 20px; display: flex; gap: 10px; justify-content: center;">
+                <button type="button" onclick="clearSig()" style="padding: 8px 15px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; background:white; font-weight: 600;">Clear</button>
+                <button type="button" onclick="saveSig()" class="btn-primary" style="padding: 8px 15px; font-size: 12px; cursor: pointer; width: auto;">Confirm Signature</button>
             </div>
-            
-            <div class="sig-line">Lecturer Signature</div>
-            <small style="color: var(--text-muted);"><?php echo strtoupper(htmlspecialchars($lecturer_name)); ?></small>
         </div>
 
-        <div class="sig-box">
-            <div class="official-stamp">
-                <span class="stamp-text">INTERNSHIP UNIT</span>
-                <div class="stamp-logo">UNM</div>
-                <span class="stamp-text">VERIFIED OFFICIAL</span>
-            </div>
-            <div class="sig-line">Department Official Stamp</div>
-            <small style="color: var(--text-muted);">COMPUTER SCIENCE DEPT.</small>
+        <div id="confirmed-sig-container" style="display:none; text-align:center;" class="no-print">
+            <p style="font-size: 11px; color: green; margin-bottom: 8px;">✓ Signature confirmed</p>
+            <button type="button" onclick="deleteSig()" style="padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; background:white; font-weight: 600;">Re-sign</button>
         </div>
-
+        
+        <div class="sig-line">Lecturer Signature</div>
+        <small style="color: var(--text-muted);"><?php echo strtoupper(htmlspecialchars($lecturer_name)); ?></small>
     </div>
+
+    <div class="sig-box">
+        <div class="official-stamp">
+            <span class="stamp-text">INTERNSHIP UNIT</span>
+            <div class="stamp-logo">UNM</div>
+            <span class="stamp-text">VERIFIED OFFICIAL</span>
+        </div>
+        <div class="sig-line">Department Official Stamp</div>
+        <small style="color: var(--text-muted);">COMPUTER SCIENCE DEPT.</small>
+    </div>
+
+</div>
 </div>
 
 <script src="script.js"></script>

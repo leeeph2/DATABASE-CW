@@ -119,19 +119,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['verify_otp'])) {
                 <label for="otp">Authentication Code</label>
                 <input type="text" id="otp" name="otp" class="otp-input" 
                        maxlength="6" required autocomplete="off" 
-                       autofocus placeholder="000000" pattern="\d{6}">
+                       autofocus placeholder="******" pattern="\d{6}">
             </div>
             
             <button type="submit" name="verify_otp" class="btn-primary" style="width: 100%; cursor: pointer; margin-top: 10px;">
                 Verify & Access System
             </button>
         </form>
-
-        <div style="margin-top: 30px; text-align: center;">
-            <a href="index.php" style="color: var(--text-muted); text-decoration: none; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
-                ← Return to Login
-            </a>
+           
+        <div style="text-align: center; margin-top: 24px;">
+            <a href="index.php" class="back-link">← Back to Login</a>
         </div>
+        
     </div>
 
 </body>
